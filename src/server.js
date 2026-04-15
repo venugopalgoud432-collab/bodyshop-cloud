@@ -101,6 +101,8 @@ app.post("/login", async (req, res) => {
 app.post("/logout", (req, res) => req.session.destroy(() => res.redirect("/login")));
 
 app.get("/dashboard", requireAuth, async (req, res) => {
+  res.send("Dashboard coming soon");
+});
   const q = (req.query.q || "").trim();
   const status = (req.query.status || "").trim();
 
