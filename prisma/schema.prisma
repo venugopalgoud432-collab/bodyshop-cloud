@@ -1,1 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
 
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  manager
+  tech
+  csr
+}
+
+enum JobStatus {
+  ON_LOT
+  WIP
+  WAITING_PARTS
+  WAITING_APPROVAL
+  PAINT
+  QC
+  READY_TO_DELIVER
+  DELIVERED
+  ON_HOLD
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Job {
+  id                  String    @id @default(cuid())
+  roNumber            String    @unique
+  customerName        String
+  customerPhone       String?
+  customerEmail       String?
+  year                String?
+  make                String?
+  model               String?
+  color               String?
+  vin                 String?
+  plate               String?
+  insuranceProvider   String?
+  claimNumber         String?
+  advisor             String?
+  technician          String?
+  status              JobStatus @default(ON_LOT)
+  stage               String?
+  dateIn              DateTime?
+  promisedDate        DateTime?
+  estimatedHours      Float     @default(0)
+  hoursWorked         Float     @default(0)
+  partsOrdered        String?
+  partsEta            DateTime?
+  requiredItems       String?
+  notes               String?
+  qcNotes             String?
+  rentalNeeded        Boolean   @default(false)
+  customerPortalToken String    @unique
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
