@@ -80,7 +80,9 @@ function emitRefresh() {
 
 app.get("/", (req, res) => (req.session.user ? res.redirect("/dashboard") : res.redirect("/login")));
 
-app.get("/login", (req, res) => res.render("auth/login", { title: "Login" }));
+app.get("/login", (req, res) => {
+  res.send("Login page coming soon");
+});
 
 app.post("/login", async (req, res) => {
   const email = (req.body.email || "").toLowerCase().trim();
