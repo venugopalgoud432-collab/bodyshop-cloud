@@ -17,12 +17,6 @@ services:
         fromDatabase:
           name: bodyshop-cloud-v4-db
           property: connectionString
-      - key: UPLOAD_DIR
-        value: ./uploads
-      - key: ENABLE_REAL_NOTIFICATIONS
-        value: "false"
-      - key: STORAGE_DRIVER
-        value: local
 
 databases:
   - name: bodyshop-cloud-v4-db
