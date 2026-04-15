@@ -3,6 +3,6 @@ services:
     name: bodyshop-cloud-v4
     env: node
     plan: starter
-    buildCommand: npm install
-    startCommand: npm start
+    buildCommand: "npm install"
+    startCommand: "npm start"
     autoDeploy: true
