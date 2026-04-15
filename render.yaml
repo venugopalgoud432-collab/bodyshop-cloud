@@ -48,6 +48,6 @@ services:
 
 databases:
   - name: bodyshop-cloud-v4-db
-    plan: starter
+    plan: basic-256mb
     databaseName: bodyshop_v4
     user: bodyshop_v4_user
