@@ -1,1 +1,15 @@
-{"name":"bodyshop-cloud"}
+{
+  "name": "bodyshop-cloud-v4",
+  "version": "4.0.0",
+  "private": true,
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.1",
+    "dotenv": "^16.4.5",
+    "@prisma/client": "^5.22.0",
+    "prisma": "^5.22.0"
+  }
+}{"name":"bodyshop-cloud"}
