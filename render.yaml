@@ -6,7 +6,3 @@ services:
     buildCommand: "npm install"
     startCommand: "npm start"
     autoDeploy: true
-
-databases:
-  - name: bodyshop-cloud-v4-db
-    plan: basic-256mb
