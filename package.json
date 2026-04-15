@@ -7,17 +7,31 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate": "prisma migrate deploy",
     "prisma:seed": "node prisma/seed.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.667.0",
     "@prisma/client": "^5.22.0",
+    "@sendgrid/mail": "^8.1.4",
     "bcrypt": "^5.1.1",
+    "connect-flash": "^0.1.1",
+    "dayjs": "^1.11.13",
     "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
     "express": "^4.21.1",
-    "prisma": "^5.22.0"
+    "express-ejs-layouts": "^2.5.1",
+    "express-session": "^1.18.1",
+    "helmet": "^8.0.0",
+    "method-override": "^3.0.0",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "pg": "^8.13.0",
+    "socket.io": "^4.8.0",
+    "twilio": "^5.3.7"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7"
+    "nodemon": "^3.1.7",
+    "prisma": "^5.22.0"
   }
 }
