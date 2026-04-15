@@ -1,0 +1,239 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  manager
+  tech
+  csr
+}
+
+enum JobStatus {
+  ON_LOT
+  WIP
+  WAITING_PARTS
+  WAITING_APPROVAL
+  PAINT
+  QC
+  READY_TO_DELIVER
+  DELIVERED
+  ON_HOLD
+}
+
+enum PartStatus {
+  ORDERED
+  RECEIVED
+  BACKORDERED
+  CANCELLED
+}
+
+enum SupplementStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  DECLINED
+}
+
+enum TimeEntryStatus {
+  CLOCKED_IN
+  CLOCKED_OUT
+}
+
+enum NotificationType {
+  EMAIL
+  SMS
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+model User {
+  id            String      @id @default(cuid())
+  name          String
+  email         String      @unique
+  passwordHash  String
+  role          Role
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  updates       JobUpdate[] @relation("UserUpdates")
+  timeEntries   TimeEntry[]
+  resetTokens   PasswordResetToken[]
+  notifications Notification[]
+}
+
+model Job {
+  id                  String         @id @default(cuid())
+  roNumber            String         @unique
+  customerName        String
+  customerPhone       String?
+  customerEmail       String?
+  year                String?
+  make                String?
+  model               String?
+  color               String?
+  vin                 String?
+  plate               String?
+  insuranceProvider   String?
+  claimNumber         String?
+  advisor             String?
+  technician          String?
+  status              JobStatus      @default(ON_LOT)
+  stage               String?
+  dateIn              DateTime?
+  promisedDate        DateTime?
+  estimatedHours      Float          @default(0)
+  hoursWorked         Float          @default(0)
+  partsOrdered        String?
+  partsEta            DateTime?
+  requiredItems       String?
+  notes               String?
+  qcNotes             String?
+  rentalNeeded        Boolean        @default(false)
+  customerPortalToken String         @unique
+  photos              JobPhoto[]
+  updates             JobUpdate[]
+  parts               Part[]
+  supplements         Supplement[]
+  notifications       Notification[]
+  timeEntries         TimeEntry[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@index([status])
+  @@index([technician])
+  @@index([promisedDate])
+}
+
+model JobPhoto {
+  id             String   @id @default(cuid())
+  jobId          String
+  originalName   String
+  filePath       String
+  storageKey     String?
+  caption        String?
+  uploadedById   String?
+  createdAt      DateTime @default(now())
+
+  job            Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  uploadedBy     User?    @relation(fields: [uploadedById], references: [id])
+
+  @@index([jobId])
+}
+
+model JobUpdate {
+  id              String    @id @default(cuid())
+  jobId           String
+  authorId        String?
+  message         String
+  customerVisible Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+
+  job             Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  author          User?     @relation("UserUpdates", fields: [authorId], references: [id])
+
+  @@index([jobId])
+  @@index([createdAt])
+}
+
+model Part {
+  id           String     @id @default(cuid())
+  jobId        String
+  name         String
+  vendor       String?
+  quantity     Int        @default(1)
+  eta          DateTime?
+  status       PartStatus @default(ORDERED)
+  receivedAt   DateTime?
+  notes        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  job          Job        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([status])
+  @@index([eta])
+}
+
+model Supplement {
+  id            String            @id @default(cuid())
+  jobId         String
+  title         String
+  amount        Float             @default(0)
+  description   String?
+  status        SupplementStatus  @default(DRAFT)
+  submittedAt   DateTime?
+  decisionAt    DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  job           Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@index([jobId])
+  @@index([status])
+}
+
+model TimeEntry {
+  id             String           @id @default(cuid())
+  jobId          String?
+  userId         String
+  technicianName String?
+  startedAt      DateTime
+  endedAt        DateTime?
+  status         TimeEntryStatus  @default(CLOCKED_IN)
+  notes          String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  job            Job?             @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([jobId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+model Notification {
+  id            String              @id @default(cuid())
+  jobId         String
+  userId        String?
+  type          NotificationType
+  recipient     String
+  subject       String?
+  message       String
+  status        NotificationStatus  @default(QUEUED)
+  sentAt        DateTime?
+  errorMessage  String?
+  createdAt     DateTime            @default(now())
+
+  job           Job                 @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user          User?               @relation(fields: [userId], references: [id])
+
+  @@index([jobId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  userId     String
+  token      String   @unique
+  expiresAt  DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
