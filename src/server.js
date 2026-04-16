@@ -11,6 +11,7 @@ const morgan = require("morgan");
 const methodOverride = require("method-override");
 const expressLayouts = require("express-ejs-layouts");
 const bcrypt = require("bcrypt");
+const multer = require("multer");
 const { PrismaClient } = require("@prisma/client");
 
 const { requireAuth } = require("./middleware/auth");
@@ -26,6 +27,14 @@ const UPLOAD_DIR = process.env.UPLOAD_DIR || "./uploads";
 if (!fs.existsSync(UPLOAD_DIR)) {
   fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 }
+
+const storage = multer.diskStorage({
+  destination: (_, __, cb) => cb(null, UPLOAD_DIR),
+  filename: (_, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_")}`);
+  }
+});
+const upload = multer({ storage });
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -57,6 +66,23 @@ app.use((req, res, next) => {
   res.locals.statusOptions = statusOptions;
   res.locals.formatDateInput = formatDateInput;
   res.locals.hoursLeft = hoursLeft;
+  res.locals.isOverdue = (job) => {
+    if (!job.promisedDate || job.status === "DELIVERED") return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const promised = new Date(job.promisedDate);
+    promised.setHours(0, 0, 0, 0);
+    return promised < today;
+  };
+  res.locals.isDueSoon = (job) => {
+    if (!job.promisedDate || job.status === "DELIVERED") return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const promised = new Date(job.promisedDate);
+    promised.setHours(0, 0, 0, 0);
+    const diffDays = Math.ceil((promised - today) / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 && diffDays <= 2;
+  };
   next();
 });
 
@@ -159,7 +185,8 @@ app.get("/jobs/new", requireAuth, (req, res) => {
     title: "New Job",
     job: null,
     updates: [],
-    parts: []
+    parts: [],
+    photos: []
   });
 });
 
@@ -225,11 +252,17 @@ app.get("/jobs/:id", requireAuth, async (req, res) => {
     orderBy: { createdAt: "desc" }
   });
 
+  const photos = await prisma.jobPhoto.findMany({
+    where: { jobId: job.id },
+    orderBy: { createdAt: "desc" }
+  });
+
   res.render("jobs/form", {
     title: `Edit Job ${job.roNumber}`,
     job,
     updates,
-    parts
+    parts,
+    photos
   });
 });
 
@@ -271,6 +304,30 @@ app.post("/jobs/:id", requireAuth, async (req, res) => {
     res.redirect(`/jobs/${req.params.id}`);
   } catch (error) {
     req.flash("error", "Could not update job.");
+    res.redirect(`/jobs/${req.params.id}`);
+  }
+});
+
+app.post("/jobs/:id/photos", requireAuth, upload.single("photo"), async (req, res) => {
+  try {
+    if (!req.file) {
+      req.flash("error", "Please select a photo.");
+      return res.redirect(`/jobs/${req.params.id}`);
+    }
+
+    await prisma.jobPhoto.create({
+      data: {
+        jobId: req.params.id,
+        originalName: req.file.originalname,
+        filePath: `/uploads/${req.file.filename}`,
+        caption: req.body.caption || null
+      }
+    });
+
+    req.flash("success", "Photo uploaded.");
+    res.redirect(`/jobs/${req.params.id}`);
+  } catch (error) {
+    req.flash("error", "Could not upload photo.");
     res.redirect(`/jobs/${req.params.id}`);
   }
 });
@@ -384,10 +441,16 @@ app.get("/status/:token", async (req, res) => {
     orderBy: { createdAt: "desc" }
   });
 
+  const photos = await prisma.jobPhoto.findMany({
+    where: { jobId: job.id },
+    orderBy: { createdAt: "desc" }
+  });
+
   res.render("customers/status", {
     title: `Status ${job.roNumber}`,
     job,
-    updates
+    updates,
+    photos
   });
 });
 
