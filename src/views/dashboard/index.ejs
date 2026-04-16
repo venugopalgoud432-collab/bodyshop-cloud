@@ -60,6 +60,7 @@
           <th>Status</th>
           <th>Stage</th>
           <th>Hours</th>
+          <th>Promised</th>
           <th>Parts ETA</th>
           <th>Actions</th>
         </tr>
@@ -67,22 +68,35 @@
       <tbody>
         <% if (!jobs.length) { %>
           <tr>
-            <td colspan="8" class="muted">No jobs found.</td>
+            <td colspan="9" class="muted">No jobs found.</td>
           </tr>
         <% } %>
 
         <% jobs.forEach(job => { %>
-          <tr>
+          <tr class="<%= isOverdue(job) ? 'row-overdue' : (isDueSoon(job) ? 'row-due-soon' : '') %>">
             <td><strong><%= job.roNumber %></strong></td>
             <td><%= job.customerName %></td>
             <td><%= [job.year, job.make, job.model].filter(Boolean).join(" ") || "—" %></td>
-            <td><%= statusLabel(job.status) %></td>
+            <td>
+              <span class="status-pill status-<%= job.status %>">
+                <%= statusLabel(job.status) %>
+              </span>
+            </td>
             <td><%= job.stage || "—" %></td>
             <td>
               <%= Number(job.hoursWorked || 0).toFixed(1) %> /
               <%= Number(job.estimatedHours || 0).toFixed(1) %>
               <br>
               <span class="muted"><%= hoursLeft(job).toFixed(1) %> left</span>
+            </td>
+            <td>
+              <% if (job.promisedDate) { %>
+                <%= new Date(job.promisedDate).toLocaleDateString() %>
+                <% if (isOverdue(job)) { %><br><span class="warn-text">Overdue</span><% } %>
+                <% if (!isOverdue(job) && isDueSoon(job)) { %><br><span class="soon-text">Due soon</span><% } %>
+              <% } else { %>
+                —
+              <% } %>
             </td>
             <td><%= job.partsEta ? new Date(job.partsEta).toLocaleDateString() : "—" %></td>
             <td>
