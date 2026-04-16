@@ -96,23 +96,29 @@ app.get("/login", (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
-  const email = (req.body.email || "").toLowerCase().trim();
-  const user = await prisma.user.findUnique({ where: { email } });
+  try {
+    const email = (req.body.email || "").toLowerCase().trim();
+    const user = await prisma.user.findUnique({ where: { email } });
 
-  if (!user || !user.isActive || !(await bcrypt.compare(req.body.password || "", user.passwordHash))) {
-    req.flash("error", "Invalid login.");
-    return res.redirect("/login");
+    if (!user || !user.isActive || !(await bcrypt.compare(req.body.password || "", user.passwordHash))) {
+      req.flash("error", "Invalid login.");
+      return res.redirect("/login");
+    }
+
+    req.session.user = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    };
+
+    req.flash("success", `Welcome back, ${user.name}.`);
+    res.redirect("/dashboard");
+  } catch (error) {
+    console.error("LOGIN ERROR:", error);
+    req.flash("error", "Login failed.");
+    res.redirect("/login");
   }
-
-  req.session.user = {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role
-  };
-
-  req.flash("success", `Welcome back, ${user.name}.`);
-  res.redirect("/dashboard");
 });
 
 app.post("/logout", (req, res) => {
@@ -120,64 +126,74 @@ app.post("/logout", (req, res) => {
 });
 
 app.get("/dashboard", requireAuth, async (req, res) => {
-  const filterStatus = req.query.status || "";
-  const q = (req.query.q || "").trim();
+  try {
+    const filterStatus = req.query.status || "";
+    const q = (req.query.q || "").trim();
 
-  const where = {
-    AND: [
-      filterStatus ? { status: filterStatus } : {},
+    const where = {
+      AND: [
+        filterStatus ? { status: filterStatus } : {},
+        q
+          ? {
+              OR: [
+                { roNumber: { contains: q, mode: "insensitive" } },
+                { customerName: { contains: q, mode: "insensitive" } },
+                { make: { contains: q, mode: "insensitive" } },
+                { model: { contains: q, mode: "insensitive" } }
+              ]
+            }
+          : {}
+      ]
+    };
+
+    const jobs = await prisma.job.findMany({
+      where,
+      orderBy: { updatedAt: "desc" },
+      take: 50
+    });
+
+    const allJobs = await prisma.job.findMany();
+
+    const stats = {
+      totalJobs: allJobs.length,
+      openJobs: allJobs.filter((j) => j.status !== "DELIVERED").length,
+      waitingParts: allJobs.filter((j) => j.status === "WAITING_PARTS").length,
+      hoursLeft: allJobs.reduce(
+        (sum, job) => sum + Math.max(Number(job.estimatedHours || 0) - Number(job.hoursWorked || 0), 0),
+        0
+      )
+    };
+
+    res.render("dashboard/index", {
+      title: "Dashboard",
+      jobs,
+      stats,
+      filterStatus,
       q
-        ? {
-            OR: [
-              { roNumber: { contains: q, mode: "insensitive" } },
-              { customerName: { contains: q, mode: "insensitive" } },
-              { make: { contains: q, mode: "insensitive" } },
-              { model: { contains: q, mode: "insensitive" } }
-            ]
-          }
-        : {}
-    ]
-  };
-
-  const jobs = await prisma.job.findMany({
-    where,
-    orderBy: { updatedAt: "desc" },
-    take: 50
-  });
-
-  const allJobs = await prisma.job.findMany();
-
-  const stats = {
-    totalJobs: allJobs.length,
-    openJobs: allJobs.filter((j) => j.status !== "DELIVERED").length,
-    waitingParts: allJobs.filter((j) => j.status === "WAITING_PARTS").length,
-    hoursLeft: allJobs.reduce(
-      (sum, job) => sum + Math.max(Number(job.estimatedHours || 0) - Number(job.hoursWorked || 0), 0),
-      0
-    )
-  };
-
-  res.render("dashboard/index", {
-    title: "Dashboard",
-    jobs,
-    stats,
-    filterStatus,
-    q
-  });
+    });
+  } catch (error) {
+    console.error("DASHBOARD ERROR:", error);
+    res.status(500).send("Error loading dashboard");
+  }
 });
 
 app.get("/production", requireAuth, async (req, res) => {
-  const jobs = await prisma.job.findMany({
-    where: {
-      status: { not: "DELIVERED" }
-    },
-    orderBy: { updatedAt: "desc" }
-  });
+  try {
+    const jobs = await prisma.job.findMany({
+      where: {
+        status: { not: "DELIVERED" }
+      },
+      orderBy: { updatedAt: "desc" }
+    });
 
-  res.render("production/index", {
-    title: "Production Board",
-    jobs
-  });
+    res.render("production/index", {
+      title: "Production Board",
+      jobs
+    });
+  } catch (error) {
+    console.error("PRODUCTION ERROR:", error);
+    res.status(500).send("Error loading production board");
+  }
 });
 
 app.get("/jobs/new", requireAuth, (req, res) => {
@@ -227,43 +243,66 @@ app.post("/jobs", requireAuth, async (req, res) => {
     req.flash("success", "Job created.");
     res.redirect(`/jobs/${job.id}`);
   } catch (error) {
+    console.error("CREATE JOB ERROR:", error);
     req.flash("error", "Could not create job. RO number may already exist.");
     res.redirect("/jobs/new");
   }
 });
 
+// SAFE JOB OPEN ROUTE
 app.get("/jobs/:id", requireAuth, async (req, res) => {
-  const job = await prisma.job.findUnique({
-    where: { id: req.params.id }
-  });
+  try {
+    const job = await prisma.job.findUnique({
+      where: { id: req.params.id }
+    });
 
-  if (!job) {
-    req.flash("error", "Job not found.");
-    return res.redirect("/dashboard");
+    if (!job) {
+      req.flash("error", "Job not found.");
+      return res.redirect("/dashboard");
+    }
+
+    let updates = [];
+    let parts = [];
+    let photos = [];
+
+    try {
+      updates = await prisma.jobUpdate.findMany({
+        where: { jobId: job.id },
+        orderBy: { createdAt: "desc" }
+      });
+    } catch (e) {
+      console.log("Updates load failed:", e.message);
+    }
+
+    try {
+      parts = await prisma.part.findMany({
+        where: { jobId: job.id },
+        orderBy: { createdAt: "desc" }
+      });
+    } catch (e) {
+      console.log("Parts load failed:", e.message);
+    }
+
+    try {
+      photos = await prisma.jobPhoto.findMany({
+        where: { jobId: job.id },
+        orderBy: { createdAt: "desc" }
+      });
+    } catch (e) {
+      console.log("Photos load failed:", e.message);
+    }
+
+    res.render("jobs/form", {
+      title: `Edit Job ${job.roNumber}`,
+      job,
+      updates,
+      parts,
+      photos
+    });
+  } catch (error) {
+    console.error("JOB LOAD ERROR:", error);
+    res.status(500).send("Error loading job");
   }
-
-  const updates = await prisma.jobUpdate.findMany({
-    where: { jobId: job.id },
-    orderBy: { createdAt: "desc" }
-  });
-
-  const parts = await prisma.part.findMany({
-    where: { jobId: job.id },
-    orderBy: { createdAt: "desc" }
-  });
-
-  const photos = await prisma.jobPhoto.findMany({
-    where: { jobId: job.id },
-    orderBy: { createdAt: "desc" }
-  });
-
-  res.render("jobs/form", {
-    title: `Edit Job ${job.roNumber}`,
-    job,
-    updates,
-    parts,
-    photos
-  });
 });
 
 app.post("/jobs/:id", requireAuth, async (req, res) => {
@@ -303,6 +342,7 @@ app.post("/jobs/:id", requireAuth, async (req, res) => {
     req.flash("success", "Job updated.");
     res.redirect(`/jobs/${req.params.id}`);
   } catch (error) {
+    console.error("UPDATE JOB ERROR:", error);
     req.flash("error", "Could not update job.");
     res.redirect(`/jobs/${req.params.id}`);
   }
@@ -327,6 +367,7 @@ app.post("/jobs/:id/photos", requireAuth, upload.single("photo"), async (req, re
     req.flash("success", "Photo uploaded.");
     res.redirect(`/jobs/${req.params.id}`);
   } catch (error) {
+    console.error("PHOTO UPLOAD ERROR:", error);
     req.flash("error", "Could not upload photo.");
     res.redirect(`/jobs/${req.params.id}`);
   }
@@ -345,6 +386,7 @@ app.post("/jobs/:id/updates", requireAuth, async (req, res) => {
     req.flash("success", "Update added.");
     res.redirect(`/jobs/${req.params.id}`);
   } catch (error) {
+    console.error("ADD UPDATE ERROR:", error);
     req.flash("error", "Could not add update.");
     res.redirect(`/jobs/${req.params.id}`);
   }
@@ -367,6 +409,7 @@ app.post("/jobs/:id/parts", requireAuth, async (req, res) => {
     req.flash("success", "Part added.");
     res.redirect(`/jobs/${req.params.id}`);
   } catch (error) {
+    console.error("ADD PART ERROR:", error);
     req.flash("error", "Could not add part.");
     res.redirect(`/jobs/${req.params.id}`);
   }
@@ -385,73 +428,95 @@ app.post("/jobs/:id/deliver", requireAuth, async (req, res) => {
     req.flash("success", "Job marked delivered.");
     res.redirect(`/jobs/${req.params.id}`);
   } catch (error) {
+    console.error("DELIVER JOB ERROR:", error);
     req.flash("error", "Could not mark job delivered.");
     res.redirect(`/jobs/${req.params.id}`);
   }
 });
 
 app.get("/timeclock", requireAuth, async (req, res) => {
-  const jobs = await prisma.job.findMany({
-    where: { technician: { not: null } }
-  });
+  try {
+    const jobs = await prisma.job.findMany({
+      where: { technician: { not: null } }
+    });
 
-  const techMap = new Map();
+    const techMap = new Map();
 
-  jobs.forEach((job) => {
-    const tech = job.technician || "Unassigned";
-    if (!techMap.has(tech)) {
-      techMap.set(tech, {
-        technician: tech,
-        jobCount: 0,
-        estimatedHours: 0,
-        hoursWorked: 0,
-        hoursLeft: 0
-      });
-    }
+    jobs.forEach((job) => {
+      const tech = job.technician || "Unassigned";
+      if (!techMap.has(tech)) {
+        techMap.set(tech, {
+          technician: tech,
+          jobCount: 0,
+          estimatedHours: 0,
+          hoursWorked: 0,
+          hoursLeft: 0
+        });
+      }
 
-    const row = techMap.get(tech);
-    row.jobCount += 1;
-    row.estimatedHours += Number(job.estimatedHours || 0);
-    row.hoursWorked += Number(job.hoursWorked || 0);
-    row.hoursLeft += Math.max(Number(job.estimatedHours || 0) - Number(job.hoursWorked || 0), 0);
-  });
+      const row = techMap.get(tech);
+      row.jobCount += 1;
+      row.estimatedHours += Number(job.estimatedHours || 0);
+      row.hoursWorked += Number(job.hoursWorked || 0);
+      row.hoursLeft += Math.max(Number(job.estimatedHours || 0) - Number(job.hoursWorked || 0), 0);
+    });
 
-  const rows = Array.from(techMap.values()).sort((a, b) => b.hoursLeft - a.hoursLeft);
+    const rows = Array.from(techMap.values()).sort((a, b) => b.hoursLeft - a.hoursLeft);
 
-  res.render("timeclock/index", {
-    title: "Technician Hours Board",
-    rows
-  });
+    res.render("timeclock/index", {
+      title: "Technician Hours Board",
+      rows
+    });
+  } catch (error) {
+    console.error("TIMECLOCK ERROR:", error);
+    res.status(500).send("Error loading technician board");
+  }
 });
 
 app.get("/status/:token", async (req, res) => {
-  const job = await prisma.job.findUnique({
-    where: { customerPortalToken: req.params.token }
-  });
+  try {
+    const job = await prisma.job.findUnique({
+      where: { customerPortalToken: req.params.token }
+    });
 
-  if (!job) {
-    return res.status(404).send("Status page not found");
+    if (!job) {
+      return res.status(404).send("Status page not found");
+    }
+
+    let updates = [];
+    let photos = [];
+
+    try {
+      updates = await prisma.jobUpdate.findMany({
+        where: {
+          jobId: job.id,
+          customerVisible: true
+        },
+        orderBy: { createdAt: "desc" }
+      });
+    } catch (e) {
+      console.log("Customer updates load failed:", e.message);
+    }
+
+    try {
+      photos = await prisma.jobPhoto.findMany({
+        where: { jobId: job.id },
+        orderBy: { createdAt: "desc" }
+      });
+    } catch (e) {
+      console.log("Customer photos load failed:", e.message);
+    }
+
+    res.render("customers/status", {
+      title: `Status ${job.roNumber}`,
+      job,
+      updates,
+      photos
+    });
+  } catch (error) {
+    console.error("CUSTOMER STATUS ERROR:", error);
+    res.status(500).send("Error loading status page");
   }
-
-  const updates = await prisma.jobUpdate.findMany({
-    where: {
-      jobId: job.id,
-      customerVisible: true
-    },
-    orderBy: { createdAt: "desc" }
-  });
-
-  const photos = await prisma.jobPhoto.findMany({
-    where: { jobId: job.id },
-    orderBy: { createdAt: "desc" }
-  });
-
-  res.render("customers/status", {
-    title: `Status ${job.roNumber}`,
-    job,
-    updates,
-    photos
-  });
 });
 
 app.get("/health", async (req, res) => {
