@@ -176,10 +176,56 @@ app.get("/dashboard", requireAuth, async (req, res) => {
     });
 
     const activeTechsSet = new Set(
-      allJobs
-        .filter((j) => !!j.technician && j.status !== "DELIVERED")
-        .map((j) => j.technician)
+      allJobs.filter((j) => !!j.technician && j.status !== "DELIVERED").map((j) => j.technician)
     );
+
+    const deliveredThisMonth = allJobs.filter((job) => {
+      if (!job.deliveredAt) return false;
+      const now = new Date();
+      const d = new Date(job.deliveredAt);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+
+    const overdueJobs = allJobs.filter((job) => {
+      if (!job.promisedDate || job.status === "DELIVERED") return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const promised = new Date(job.promisedDate);
+      promised.setHours(0, 0, 0, 0);
+      return promised < today;
+    }).length;
+
+    const deliveredJobsWithCycle = allJobs
+      .filter((job) => job.dateIn && job.deliveredAt)
+      .map((job) => {
+        const cycleDays = Math.max(
+          0,
+          Math.ceil((new Date(job.deliveredAt) - new Date(job.dateIn)) / (1000 * 60 * 60 * 24))
+        );
+        return cycleDays;
+      });
+
+    const avgCycleDays =
+      deliveredJobsWithCycle.length > 0
+        ? deliveredJobsWithCycle.reduce((sum, d) => sum + d, 0) / deliveredJobsWithCycle.length
+        : 0;
+
+    const estimatedSales = allJobs.reduce((sum, job) => {
+      const labourSale = Number(job.estimatedHours || 0) * Number(job.labourRate || 0);
+      const sale = Number(job.estimatedSale || 0) || labourSale + Number(job.partsCost || 0);
+      return sum + sale;
+    }, 0);
+
+    const grossProfit = allJobs.reduce((sum, job) => {
+      const labourSale = Number(job.estimatedHours || 0) * Number(job.labourRate || 0);
+      const sale = Number(job.estimatedSale || 0) || labourSale + Number(job.partsCost || 0);
+      const gp = sale - Number(job.partsCost || 0) - Number(job.otherCost || 0);
+      return sum + gp;
+    }, 0);
+
+    const labourPotential = allJobs.reduce((sum, job) => {
+      return sum + Number(job.estimatedHours || 0) * Number(job.labourRate || 0);
+    }, 0);
 
     const stats = {
       totalJobs: allJobs.length,
@@ -187,7 +233,13 @@ app.get("/dashboard", requireAuth, async (req, res) => {
       waitingParts: allJobs.filter((j) => j.status === "WAITING_PARTS").length,
       readyToDeliver: allJobs.filter((j) => j.status === "READY_TO_DELIVER").length,
       clockedIn: activeEntries.length,
-      activeTechs: activeTechsSet.size
+      activeTechs: activeTechsSet.size,
+      grossProfit,
+      estimatedSales,
+      avgCycleDays,
+      overdueJobs,
+      deliveredThisMonth,
+      labourPotential
     };
 
     res.render("dashboard/index", {
@@ -203,12 +255,71 @@ app.get("/dashboard", requireAuth, async (req, res) => {
   }
 });
 
+app.get("/reports", requireRole(["admin", "manager", "csr"]), async (req, res) => {
+  try {
+    const jobs = await prisma.job.findMany({
+      orderBy: { updatedAt: "desc" }
+    });
+
+    const rows = jobs.map((job) => {
+      const labourSale = Number(job.estimatedHours || 0) * Number(job.labourRate || 0);
+      const sale = Number(job.estimatedSale || 0) || labourSale + Number(job.partsCost || 0);
+      const grossProfit = sale - Number(job.partsCost || 0) - Number(job.otherCost || 0);
+
+      let cycleDays = 0;
+      if (job.dateIn) {
+        const endDate = job.deliveredAt || new Date();
+        cycleDays = Math.max(
+          0,
+          Math.ceil((new Date(endDate) - new Date(job.dateIn)) / (1000 * 60 * 60 * 24))
+        );
+      }
+
+      return {
+        roNumber: job.roNumber,
+        customerName: job.customerName,
+        status: job.status,
+        cycleDays,
+        sale,
+        grossProfit
+      };
+    });
+
+    const deliveredThisMonth = jobs.filter((job) => {
+      if (!job.deliveredAt) return false;
+      const now = new Date();
+      const d = new Date(job.deliveredAt);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length;
+
+    const cycleRows = rows.filter((r) => r.cycleDays > 0);
+    const avgCycleDays =
+      cycleRows.length > 0
+        ? cycleRows.reduce((sum, r) => sum + r.cycleDays, 0) / cycleRows.length
+        : 0;
+
+    const report = {
+      estimatedSales: rows.reduce((sum, r) => sum + r.sale, 0),
+      grossProfit: rows.reduce((sum, r) => sum + r.grossProfit, 0),
+      avgCycleDays,
+      deliveredThisMonth
+    };
+
+    res.render("reports/index", {
+      title: "Insurance / KPI Reports",
+      report,
+      rows
+    });
+  } catch (error) {
+    console.error("REPORTS ERROR:", error);
+    res.status(500).send("Error loading reports");
+  }
+});
+
 app.get("/production", requireAuth, async (req, res) => {
   try {
     const jobs = await prisma.job.findMany({
-      where: {
-        status: { not: "DELIVERED" }
-      },
+      where: { status: { not: "DELIVERED" } },
       orderBy: { updatedAt: "desc" }
     });
 
@@ -256,6 +367,10 @@ app.post("/jobs", requireAuth, async (req, res) => {
         promisedDate: req.body.promisedDate ? new Date(req.body.promisedDate) : null,
         estimatedHours: Number(req.body.estimatedHours || 0),
         hoursWorked: Number(req.body.hoursWorked || 0),
+        labourRate: Number(req.body.labourRate || 0),
+        partsCost: Number(req.body.partsCost || 0),
+        otherCost: Number(req.body.otherCost || 0),
+        estimatedSale: Number(req.body.estimatedSale || 0),
         partsOrdered: req.body.partsOrdered || null,
         partsEta: req.body.partsEta ? new Date(req.body.partsEta) : null,
         requiredItems: req.body.requiredItems || null,
@@ -390,6 +505,10 @@ app.post("/jobs/:id", requireAuth, async (req, res) => {
         promisedDate: req.body.promisedDate ? new Date(req.body.promisedDate) : null,
         estimatedHours: Number(req.body.estimatedHours || 0),
         hoursWorked: Number(req.body.hoursWorked || 0),
+        labourRate: Number(req.body.labourRate || 0),
+        partsCost: Number(req.body.partsCost || 0),
+        otherCost: Number(req.body.otherCost || 0),
+        estimatedSale: Number(req.body.estimatedSale || 0),
         partsOrdered: req.body.partsOrdered || null,
         partsEta: req.body.partsEta ? new Date(req.body.partsEta) : null,
         requiredItems: req.body.requiredItems || null,
@@ -530,7 +649,8 @@ app.post("/jobs/:id/deliver", requireAuth, async (req, res) => {
       where: { id: req.params.id },
       data: {
         status: "DELIVERED",
-        stage: "Completed / Delivered"
+        stage: "Completed / Delivered",
+        deliveredAt: new Date()
       }
     });
 
@@ -685,13 +805,7 @@ app.post("/admin/users", requireRole(["admin", "manager"]), async (req, res) => 
       }
     });
 
-    await writeAudit(
-      req.session.user.id,
-      null,
-      "USER_CREATED",
-      `Created staff user ${req.body.email}`
-    );
-
+    await writeAudit(req.session.user.id, null, "USER_CREATED", `Created staff user ${req.body.email}`);
     req.flash("success", "Staff user created.");
     res.redirect("/admin/users");
   } catch (error) {
