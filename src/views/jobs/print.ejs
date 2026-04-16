@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Job Summary <%= job.roNumber %></title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; color: #111827; }
+    h1,h2 { margin-bottom: 10px; }
+    .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+    .box { border: 1px solid #d1d5db; border-radius: 10px; padding: 12px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
+    th { background: #f3f4f6; }
+    .muted { color: #6b7280; }
+  </style>
+</head>
+<body>
+  <h1>Job Summary - <%= job.roNumber %></h1>
+
+  <div class="grid">
+    <div class="box">
+      <strong>Customer</strong><br>
+      <%= job.customerName %><br>
+      <span class="muted"><%= job.customerPhone || "" %> <%= job.customerEmail || "" %></span>
+    </div>
+    <div class="box">
+      <strong>Vehicle</strong><br>
+      <%= [job.year, job.make, job.model, job.color].filter(Boolean).join(" ") || "—" %><br>
+      <span class="muted">VIN: <%= job.vin || "—" %> | Plate: <%= job.plate || "—" %></span>
+    </div>
+    <div class="box">
+      <strong>Status</strong><br>
+      <%= statusLabel(job.status) %><br>
+      <span class="muted">Stage: <%= job.stage || "—" %></span>
+    </div>
+    <div class="box">
+      <strong>Hours</strong><br>
+      Worked: <%= Number(job.hoursWorked || 0).toFixed(1) %><br>
+      Est: <%= Number(job.estimatedHours || 0).toFixed(1) %><br>
+      Left: <%= hoursLeft(job).toFixed(1) %>
+    </div>
+  </div>
+
+  <h2>Parts</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Part</th>
+        <th>Vendor</th>
+        <th>Qty</th>
+        <th>Status</th>
+        <th>ETA</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!parts.length) { %>
+        <tr><td colspan="5">No parts listed.</td></tr>
+      <% } %>
+      <% parts.forEach(part => { %>
+        <tr>
+          <td><%= part.name %></td>
+          <td><%= part.vendor || "—" %></td>
+          <td><%= part.quantity %></td>
+          <td><%= part.status %></td>
+          <td><%= part.eta ? new Date(part.eta).toLocaleDateString() : "—" %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <h2>Updates</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Message</th>
+        <th>Customer Visible</th>
+        <th>When</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (!updates.length) { %>
+        <tr><td colspan="3">No updates yet.</td></tr>
+      <% } %>
+      <% updates.forEach(update => { %>
+        <tr>
+          <td><%= update.message %></td>
+          <td><%= update.customerVisible ? "Yes" : "No" %></td>
+          <td><%= new Date(update.createdAt).toLocaleString() %></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+
+  <script>
+    window.onload = () => window.print();
+  </script>
+</body>
+</html>
