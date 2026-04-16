@@ -197,13 +197,12 @@ app.get("/dashboard", requireAuth, async (req, res) => {
 
     const deliveredJobsWithCycle = allJobs
       .filter((job) => job.dateIn && job.deliveredAt)
-      .map((job) => {
-        const cycleDays = Math.max(
+      .map((job) =>
+        Math.max(
           0,
           Math.ceil((new Date(job.deliveredAt) - new Date(job.dateIn)) / (1000 * 60 * 60 * 24))
-        );
-        return cycleDays;
-      });
+        )
+      );
 
     const avgCycleDays =
       deliveredJobsWithCycle.length > 0
@@ -524,6 +523,32 @@ app.post("/jobs/:id", requireAuth, async (req, res) => {
   } catch (error) {
     console.error("UPDATE JOB ERROR:", error);
     req.flash("error", "Could not update job.");
+    res.redirect(`/jobs/${req.params.id}`);
+  }
+});
+
+app.post("/jobs/:id/quick-status", requireAuth, async (req, res) => {
+  try {
+    await prisma.job.update({
+      where: { id: req.params.id },
+      data: {
+        status: req.body.status,
+        stage: req.body.stage || null
+      }
+    });
+
+    await writeAudit(
+      req.session.user.id,
+      req.params.id,
+      "JOB_QUICK_STATUS",
+      `${req.body.status} / ${req.body.stage || ""}`
+    );
+
+    req.flash("success", "Job workflow updated.");
+    res.redirect(`/jobs/${req.params.id}`);
+  } catch (error) {
+    console.error("QUICK STATUS ERROR:", error);
+    req.flash("error", "Could not update workflow.");
     res.redirect(`/jobs/${req.params.id}`);
   }
 });
