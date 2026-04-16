@@ -94,16 +94,38 @@ app.post("/logout", (req, res) => {
 });
 
 app.get("/dashboard", requireAuth, async (req, res) => {
+  const filterStatus = req.query.status || "";
+  const q = (req.query.q || "").trim();
+
+  const where = {
+    AND: [
+      filterStatus ? { status: filterStatus } : {},
+      q
+        ? {
+            OR: [
+              { roNumber: { contains: q, mode: "insensitive" } },
+              { customerName: { contains: q, mode: "insensitive" } },
+              { make: { contains: q, mode: "insensitive" } },
+              { model: { contains: q, mode: "insensitive" } }
+            ]
+          }
+        : {}
+    ]
+  };
+
   const jobs = await prisma.job.findMany({
+    where,
     orderBy: { updatedAt: "desc" },
     take: 50
   });
 
+  const allJobs = await prisma.job.findMany();
+
   const stats = {
-    totalJobs: jobs.length,
-    openJobs: jobs.filter((j) => j.status !== "DELIVERED").length,
-    waitingParts: jobs.filter((j) => j.status === "WAITING_PARTS").length,
-    hoursLeft: jobs.reduce(
+    totalJobs: allJobs.length,
+    openJobs: allJobs.filter((j) => j.status !== "DELIVERED").length,
+    waitingParts: allJobs.filter((j) => j.status === "WAITING_PARTS").length,
+    hoursLeft: allJobs.reduce(
       (sum, job) => sum + Math.max(Number(job.estimatedHours || 0) - Number(job.hoursWorked || 0), 0),
       0
     )
@@ -112,7 +134,9 @@ app.get("/dashboard", requireAuth, async (req, res) => {
   res.render("dashboard/index", {
     title: "Dashboard",
     jobs,
-    stats
+    stats,
+    filterStatus,
+    q
   });
 });
 
@@ -120,7 +144,8 @@ app.get("/jobs/new", requireAuth, (req, res) => {
   res.render("jobs/form", {
     title: "New Job",
     job: null,
-    updates: []
+    updates: [],
+    parts: []
   });
 });
 
@@ -181,10 +206,16 @@ app.get("/jobs/:id", requireAuth, async (req, res) => {
     orderBy: { createdAt: "desc" }
   });
 
+  const parts = await prisma.part.findMany({
+    where: { jobId: job.id },
+    orderBy: { createdAt: "desc" }
+  });
+
   res.render("jobs/form", {
     title: `Edit Job ${job.roNumber}`,
     job,
-    updates
+    updates,
+    parts
   });
 });
 
@@ -246,6 +277,62 @@ app.post("/jobs/:id/updates", requireAuth, async (req, res) => {
     req.flash("error", "Could not add update.");
     res.redirect(`/jobs/${req.params.id}`);
   }
+});
+
+app.post("/jobs/:id/parts", requireAuth, async (req, res) => {
+  try {
+    await prisma.part.create({
+      data: {
+        jobId: req.params.id,
+        name: req.body.name,
+        vendor: req.body.vendor || null,
+        quantity: Number(req.body.quantity || 1),
+        eta: req.body.eta ? new Date(req.body.eta) : null,
+        status: req.body.status,
+        notes: req.body.notes || null
+      }
+    });
+
+    req.flash("success", "Part added.");
+    res.redirect(`/jobs/${req.params.id}`);
+  } catch (error) {
+    req.flash("error", "Could not add part.");
+    res.redirect(`/jobs/${req.params.id}`);
+  }
+});
+
+app.get("/timeclock", requireAuth, async (req, res) => {
+  const jobs = await prisma.job.findMany({
+    where: { technician: { not: null } }
+  });
+
+  const techMap = new Map();
+
+  jobs.forEach((job) => {
+    const tech = job.technician || "Unassigned";
+    if (!techMap.has(tech)) {
+      techMap.set(tech, {
+        technician: tech,
+        jobCount: 0,
+        estimatedHours: 0,
+        hoursWorked: 0,
+        hoursLeft: 0
+      });
+    }
+
+    const row = techMap.get(tech);
+    row.jobCount += 1;
+    row.estimatedHours += Number(job.estimatedHours || 0);
+    row.hoursWorked += Number(job.hoursWorked || 0);
+    row.hoursLeft += Math.max(Number(job.estimatedHours || 0) - Number(job.hoursWorked || 0), 0);
+  });
+
+  const rows = Array.from(techMap.values()).sort((a, b) => b.hoursLeft - a.hoursLeft);
+
+  res.render("timeclock/index", {
+    title: "Technician Hours Board",
+    rows
+  });
 });
 
 app.get("/status/:token", async (req, res) => {
