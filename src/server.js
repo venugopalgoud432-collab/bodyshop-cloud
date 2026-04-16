@@ -14,7 +14,7 @@ const bcrypt = require("bcrypt");
 const multer = require("multer");
 const { PrismaClient } = require("@prisma/client");
 
-const { requireAuth } = require("./middleware/auth");
+const { requireAuth, requireRole } = require("./middleware/auth");
 const { statusLabel, formatDateInput, hoursLeft, statusOptions } = require("./utils/viewHelpers");
 
 const prisma = new PrismaClient();
@@ -35,6 +35,21 @@ const storage = multer.diskStorage({
   }
 });
 const upload = multer({ storage });
+
+async function writeAudit(userId, jobId, action, details = null) {
+  try {
+    await prisma.auditLog.create({
+      data: {
+        userId: userId || null,
+        jobId: jobId || null,
+        action,
+        details
+      }
+    });
+  } catch (error) {
+    console.error("AUDIT ERROR:", error.message);
+  }
+}
 
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
@@ -112,6 +127,7 @@ app.post("/login", async (req, res) => {
       role: user.role
     };
 
+    await writeAudit(user.id, null, "LOGIN", `User ${user.email} logged in`);
     req.flash("success", `Welcome back, ${user.name}.`);
     res.redirect("/dashboard");
   } catch (error) {
@@ -160,11 +176,7 @@ app.get("/dashboard", requireAuth, async (req, res) => {
       totalJobs: allJobs.length,
       openJobs: allJobs.filter((j) => j.status !== "DELIVERED").length,
       waitingParts: allJobs.filter((j) => j.status === "WAITING_PARTS").length,
-      readyToDeliver: allJobs.filter((j) => j.status === "READY_TO_DELIVER").length,
-      hoursLeft: allJobs.reduce(
-        (sum, job) => sum + Math.max(Number(job.estimatedHours || 0) - Number(job.hoursWorked || 0), 0),
-        0
-      )
+      readyToDeliver: allJobs.filter((j) => j.status === "READY_TO_DELIVER").length
     };
 
     res.render("dashboard/index", {
@@ -243,6 +255,7 @@ app.post("/jobs", requireAuth, async (req, res) => {
       }
     });
 
+    await writeAudit(req.session.user.id, job.id, "JOB_CREATED", `Created job ${job.roNumber}`);
     req.flash("success", "Job created.");
     res.redirect(`/jobs/${job.id}`);
   } catch (error) {
@@ -307,6 +320,40 @@ app.get("/jobs/:id", requireAuth, async (req, res) => {
   }
 });
 
+app.get("/jobs/:id/print", requireAuth, async (req, res) => {
+  try {
+    const job = await prisma.job.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (!job) {
+      return res.status(404).send("Job not found");
+    }
+
+    const updates = await prisma.jobUpdate.findMany({
+      where: { jobId: job.id },
+      orderBy: { createdAt: "desc" }
+    });
+
+    const parts = await prisma.part.findMany({
+      where: { jobId: job.id },
+      orderBy: { createdAt: "desc" }
+    });
+
+    res.render("jobs/print", {
+      layout: false,
+      job,
+      updates,
+      parts,
+      statusLabel,
+      hoursLeft
+    });
+  } catch (error) {
+    console.error("PRINT ERROR:", error);
+    res.status(500).send("Error generating print view");
+  }
+});
+
 app.post("/jobs/:id", requireAuth, async (req, res) => {
   try {
     await prisma.job.update({
@@ -341,6 +388,7 @@ app.post("/jobs/:id", requireAuth, async (req, res) => {
       }
     });
 
+    await writeAudit(req.session.user.id, req.params.id, "JOB_UPDATED", "Updated job details");
     req.flash("success", "Job updated.");
     res.redirect(`/jobs/${req.params.id}`);
   } catch (error) {
@@ -366,6 +414,7 @@ app.post("/jobs/:id/photos", requireAuth, upload.single("photo"), async (req, re
       }
     });
 
+    await writeAudit(req.session.user.id, req.params.id, "PHOTO_UPLOADED", req.file.originalname);
     req.flash("success", "Photo uploaded.");
     res.redirect(`/jobs/${req.params.id}`);
   } catch (error) {
@@ -375,7 +424,7 @@ app.post("/jobs/:id/photos", requireAuth, upload.single("photo"), async (req, re
   }
 });
 
-app.post("/photos/:id/delete", requireAuth, async (req, res) => {
+app.post("/photos/:id/delete", requireRole(["admin", "manager", "csr"]), async (req, res) => {
   try {
     const photo = await prisma.jobPhoto.findUnique({
       where: { id: req.params.id }
@@ -389,6 +438,7 @@ app.post("/photos/:id/delete", requireAuth, async (req, res) => {
       await prisma.jobPhoto.delete({
         where: { id: req.params.id }
       });
+      await writeAudit(req.session.user.id, req.body.jobId, "PHOTO_DELETED", photo.originalName);
     }
 
     req.flash("success", "Photo deleted.");
@@ -410,6 +460,7 @@ app.post("/jobs/:id/updates", requireAuth, async (req, res) => {
       }
     });
 
+    await writeAudit(req.session.user.id, req.params.id, "JOB_UPDATE_ADDED", req.body.message);
     req.flash("success", "Update added.");
     res.redirect(`/jobs/${req.params.id}`);
   } catch (error) {
@@ -433,6 +484,7 @@ app.post("/jobs/:id/parts", requireAuth, async (req, res) => {
       }
     });
 
+    await writeAudit(req.session.user.id, req.params.id, "PART_ADDED", req.body.name);
     req.flash("success", "Part added.");
     res.redirect(`/jobs/${req.params.id}`);
   } catch (error) {
@@ -451,6 +503,7 @@ app.post("/parts/:id/status", requireAuth, async (req, res) => {
       }
     });
 
+    await writeAudit(req.session.user.id, req.body.jobId, "PART_STATUS_UPDATED", `Set to ${req.body.status}`);
     req.flash("success", "Part status updated.");
     res.redirect(`/jobs/${req.body.jobId}`);
   } catch (error) {
@@ -470,6 +523,7 @@ app.post("/jobs/:id/deliver", requireAuth, async (req, res) => {
       }
     });
 
+    await writeAudit(req.session.user.id, req.params.id, "JOB_DELIVERED", "Marked delivered");
     req.flash("success", "Job marked delivered.");
     res.redirect(`/jobs/${req.params.id}`);
   } catch (error) {
@@ -482,39 +536,111 @@ app.post("/jobs/:id/deliver", requireAuth, async (req, res) => {
 app.get("/timeclock", requireAuth, async (req, res) => {
   try {
     const jobs = await prisma.job.findMany({
-      where: { technician: { not: null } }
+      where: { status: { not: "DELIVERED" } },
+      orderBy: { updatedAt: "desc" }
+    });
+
+    const activeEntries = await prisma.timeEntry.findMany({
+      where: { status: "CLOCKED_IN" },
+      orderBy: { startedAt: "asc" },
+      include: { user: true, job: true }
     });
 
     const techMap = new Map();
 
-    jobs.forEach((job) => {
-      const tech = job.technician || "Unassigned";
-      if (!techMap.has(tech)) {
-        techMap.set(tech, {
-          technician: tech,
-          jobCount: 0,
-          estimatedHours: 0,
-          hoursWorked: 0,
-          hoursLeft: 0
-        });
-      }
+    jobs
+      .filter((job) => !!job.technician)
+      .forEach((job) => {
+        const tech = job.technician || "Unassigned";
+        if (!techMap.has(tech)) {
+          techMap.set(tech, {
+            technician: tech,
+            jobCount: 0,
+            estimatedHours: 0,
+            hoursWorked: 0,
+            hoursLeft: 0
+          });
+        }
 
-      const row = techMap.get(tech);
-      row.jobCount += 1;
-      row.estimatedHours += Number(job.estimatedHours || 0);
-      row.hoursWorked += Number(job.hoursWorked || 0);
-      row.hoursLeft += Math.max(Number(job.estimatedHours || 0) - Number(job.hoursWorked || 0), 0);
-    });
+        const row = techMap.get(tech);
+        row.jobCount += 1;
+        row.estimatedHours += Number(job.estimatedHours || 0);
+        row.hoursWorked += Number(job.hoursWorked || 0);
+        row.hoursLeft += Math.max(Number(job.estimatedHours || 0) - Number(job.hoursWorked || 0), 0);
+      });
 
     const rows = Array.from(techMap.values()).sort((a, b) => b.hoursLeft - a.hoursLeft);
 
     res.render("timeclock/index", {
       title: "Technician Hours Board",
-      rows
+      rows,
+      jobs,
+      activeEntries
     });
   } catch (error) {
     console.error("TIMECLOCK ERROR:", error);
     res.status(500).send("Error loading technician board");
+  }
+});
+
+app.post("/timeclock/in", requireRole(["admin", "manager", "tech"]), async (req, res) => {
+  try {
+    await prisma.timeEntry.create({
+      data: {
+        userId: req.session.user.id,
+        jobId: req.body.jobId || null,
+        technicianName: req.session.user.name,
+        startedAt: new Date(),
+        status: "CLOCKED_IN",
+        notes: req.body.notes || null
+      }
+    });
+
+    await writeAudit(req.session.user.id, req.body.jobId || null, "CLOCKED_IN", req.body.notes || "Clocked in");
+    req.flash("success", "Punched in.");
+    res.redirect("/timeclock");
+  } catch (error) {
+    console.error("CLOCK IN ERROR:", error);
+    req.flash("error", "Could not punch in.");
+    res.redirect("/timeclock");
+  }
+});
+
+app.post("/timeclock/:id/out", requireRole(["admin", "manager", "tech"]), async (req, res) => {
+  try {
+    const entry = await prisma.timeEntry.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (!entry) {
+      req.flash("error", "Time entry not found.");
+      return res.redirect("/timeclock");
+    }
+
+    if (
+      req.session.user.role !== "admin" &&
+      req.session.user.role !== "manager" &&
+      req.session.user.id !== entry.userId
+    ) {
+      req.flash("error", "You do not have access to punch out this entry.");
+      return res.redirect("/timeclock");
+    }
+
+    await prisma.timeEntry.update({
+      where: { id: req.params.id },
+      data: {
+        endedAt: new Date(),
+        status: "CLOCKED_OUT"
+      }
+    });
+
+    await writeAudit(req.session.user.id, entry.jobId || null, "CLOCKED_OUT", "Punched out");
+    req.flash("success", "Punched out.");
+    res.redirect("/timeclock");
+  } catch (error) {
+    console.error("CLOCK OUT ERROR:", error);
+    req.flash("error", "Could not punch out.");
+    res.redirect("/timeclock");
   }
 });
 
