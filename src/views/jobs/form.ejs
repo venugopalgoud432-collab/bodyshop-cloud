@@ -5,6 +5,7 @@
       <a href="/dashboard" class="button secondary">Back</a>
       <% if (job) { %>
         <a href="/status/<%= job.customerPortalToken %>" class="button secondary">Customer Page</a>
+        <a href="/jobs/<%= job.id %>/print" class="button secondary" target="_blank">Print</a>
       <% } %>
     </div>
   </div>
@@ -117,6 +118,26 @@
     </div>
 
     <div>
+      <label>Labour Rate</label>
+      <input type="number" step="0.01" min="0" name="labourRate" value="<%= job?.labourRate ?? 0 %>" />
+    </div>
+
+    <div>
+      <label>Parts Cost</label>
+      <input type="number" step="0.01" min="0" name="partsCost" value="<%= job?.partsCost ?? 0 %>" />
+    </div>
+
+    <div>
+      <label>Other Cost</label>
+      <input type="number" step="0.01" min="0" name="otherCost" value="<%= job?.otherCost ?? 0 %>" />
+    </div>
+
+    <div>
+      <label>Estimated Sale</label>
+      <input type="number" step="0.01" min="0" name="estimatedSale" value="<%= job?.estimatedSale ?? 0 %>" />
+    </div>
+
+    <div>
       <label>Parts ETA</label>
       <input type="date" name="partsEta" value="<%= job ? formatDateInput(job.partsEta) : '' %>" />
     </div>
@@ -154,24 +175,44 @@
     </div>
   </form>
 
+  <% if (job) { 
+    const labourSale = Number(job.estimatedHours || 0) * Number(job.labourRate || 0);
+    const sale = Number(job.estimatedSale || 0) || labourSale + Number(job.partsCost || 0);
+    const grossProfit = sale - Number(job.partsCost || 0) - Number(job.otherCost || 0);
+  %>
+    <section class="stats-grid" style="margin-top:20px;">
+      <div class="stat-card">
+        <div class="stat-label">Labour Potential</div>
+        <div class="stat-value">$<%= labourSale.toFixed(0) %></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Estimated Sale</div>
+        <div class="stat-value">$<%= sale.toFixed(0) %></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Gross Profit</div>
+        <div class="stat-value">$<%= grossProfit.toFixed(0) %></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Hours Left</div>
+        <div class="stat-value"><%= hoursLeft(job).toFixed(1) %></div>
+      </div>
+    </section>
+  <% } %>
+
   <% if (job) { %>
     <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;">
-
-    <div class="section-head">
-      <h2>Photos</h2>
-    </div>
+    <div class="section-head"><h2>Photos</h2></div>
 
     <form action="/jobs/<%= job.id %>/photos" method="post" enctype="multipart/form-data" class="form-grid">
       <div>
         <label>Select Photo</label>
         <input type="file" name="photo" accept="image/*" required />
       </div>
-
       <div>
         <label>Caption</label>
         <input name="caption" />
       </div>
-
       <div class="full">
         <button class="button">Upload Photo</button>
       </div>
@@ -193,32 +234,13 @@
     <% } %>
 
     <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;">
-
-    <div class="section-head">
-      <h2>Parts</h2>
-    </div>
+    <div class="section-head"><h2>Parts</h2></div>
 
     <form action="/jobs/<%= job.id %>/parts" method="post" class="form-grid">
-      <div>
-        <label>Part Name</label>
-        <input name="name" required />
-      </div>
-
-      <div>
-        <label>Vendor</label>
-        <input name="vendor" />
-      </div>
-
-      <div>
-        <label>Quantity</label>
-        <input type="number" min="1" name="quantity" value="1" />
-      </div>
-
-      <div>
-        <label>ETA</label>
-        <input type="date" name="eta" />
-      </div>
-
+      <div><label>Part Name</label><input name="name" required /></div>
+      <div><label>Vendor</label><input name="vendor" /></div>
+      <div><label>Quantity</label><input type="number" min="1" name="quantity" value="1" /></div>
+      <div><label>ETA</label><input type="date" name="eta" /></div>
       <div>
         <label>Status</label>
         <select name="status">
@@ -228,15 +250,8 @@
           <option value="CANCELLED">Cancelled</option>
         </select>
       </div>
-
-      <div>
-        <label>Notes</label>
-        <input name="notes" />
-      </div>
-
-      <div class="full">
-        <button class="button">Add Part</button>
-      </div>
+      <div><label>Notes</label><input name="notes" /></div>
+      <div class="full"><button class="button">Add Part</button></div>
     </form>
 
     <% if (parts && parts.length) { %>
@@ -244,13 +259,7 @@
         <table>
           <thead>
             <tr>
-              <th>Part</th>
-              <th>Vendor</th>
-              <th>Qty</th>
-              <th>Status</th>
-              <th>ETA</th>
-              <th>Notes</th>
-              <th>Update</th>
+              <th>Part</th><th>Vendor</th><th>Qty</th><th>Status</th><th>ETA</th><th>Notes</th><th>Update</th>
             </tr>
           </thead>
           <tbody>
@@ -282,14 +291,13 @@
     <% } %>
 
     <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;">
-
     <h2>Post Internal or Customer Update</h2>
+
     <form action="/jobs/<%= job.id %>/updates" method="post" class="form-grid">
       <div class="full">
         <label>Update Message</label>
         <textarea name="message" required></textarea>
       </div>
-
       <div>
         <label>Visible to Customer</label>
         <select name="customerVisible">
@@ -297,7 +305,6 @@
           <option value="true">Yes</option>
         </select>
       </div>
-
       <div style="display:flex;align-items:flex-end;">
         <button class="button">Add Update</button>
       </div>
@@ -319,11 +326,7 @@
     <% } %>
 
     <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;">
-
-    <div class="section-head">
-      <h2>Workflow</h2>
-    </div>
-
+    <div class="section-head"><h2>Workflow</h2></div>
     <form action="/jobs/<%= job.id %>/deliver" method="post">
       <button class="button secondary">Mark Delivered</button>
     </form>
