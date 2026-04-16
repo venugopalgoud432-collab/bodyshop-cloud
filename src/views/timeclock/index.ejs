@@ -1,7 +1,90 @@
+<section class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Active Clock-ins</div>
+    <div class="stat-value"><%= activeEntries.length %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Technicians With Work</div>
+    <div class="stat-value"><%= rows.length %></div>
+  </div>
+</section>
+
 <section class="card">
   <div class="section-head">
     <h1>Technician Hours Board</h1>
     <a href="/dashboard" class="button secondary">Back</a>
+  </div>
+
+  <form action="/timeclock/in" method="post" class="form-grid">
+    <div>
+      <label>Job</label>
+      <select name="jobId">
+        <option value="">General shop time</option>
+        <% jobs.forEach(job => { %>
+          <option value="<%= job.id %>"><%= job.roNumber %> - <%= job.customerName %></option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div>
+      <label>Notes</label>
+      <input name="notes" placeholder="teardown, prep, parts, paint..." />
+    </div>
+
+    <div style="display:flex;align-items:flex-end;">
+      <button class="button">Punch In</button>
+    </div>
+  </form>
+</section>
+
+<section class="card" style="margin-top:16px;">
+  <div class="section-head">
+    <h2>Currently Clocked In</h2>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Technician</th>
+          <th>Job</th>
+          <th>Started</th>
+          <th>Notes</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!activeEntries.length) { %>
+          <tr>
+            <td colspan="5" class="muted">No one is currently clocked in.</td>
+          </tr>
+        <% } %>
+
+        <% activeEntries.forEach(entry => { %>
+          <tr>
+            <td><strong><%= entry.technicianName || entry.user.name %></strong></td>
+            <td><%= entry.job ? `${entry.job.roNumber} - ${entry.job.customerName}` : "General shop time" %></td>
+            <td><%= new Date(entry.startedAt).toLocaleString() %></td>
+            <td><%= entry.notes || "—" %></td>
+            <td>
+              <% if (currentUser && (currentUser.role === "admin" || currentUser.role === "manager" || currentUser.id === entry.userId)) { %>
+                <form action="/timeclock/<%= entry.id %>/out" method="post">
+                  <button class="button secondary small">Punch Out</button>
+                </form>
+              <% } else { %>
+                <span class="muted">—</span>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="card" style="margin-top:16px;">
+  <div class="section-head">
+    <h2>Technician Hours Summary</h2>
   </div>
 
   <div class="table-wrap">
