@@ -13,7 +13,7 @@ const expressLayouts = require("express-ejs-layouts");
 const bcrypt = require("bcrypt");
 const { PrismaClient } = require("@prisma/client");
 
-const { requireAuth, requireRole } = require("./middleware/auth");
+const { requireAuth } = require("./middleware/auth");
 const { statusLabel, formatDateInput, hoursLeft, statusOptions } = require("./utils/viewHelpers");
 
 const prisma = new PrismaClient();
@@ -103,6 +103,113 @@ app.get("/dashboard", requireAuth, async (req, res) => {
     title: "Dashboard",
     jobs
   });
+});
+
+app.get("/jobs/new", requireAuth, (req, res) => {
+  res.render("jobs/form", {
+    title: "New Job",
+    job: null
+  });
+});
+
+app.post("/jobs", requireAuth, async (req, res) => {
+  try {
+    const job = await prisma.job.create({
+      data: {
+        roNumber: req.body.roNumber,
+        customerName: req.body.customerName,
+        customerPhone: req.body.customerPhone || null,
+        customerEmail: req.body.customerEmail || null,
+        year: req.body.year || null,
+        make: req.body.make || null,
+        model: req.body.model || null,
+        color: req.body.color || null,
+        vin: req.body.vin || null,
+        plate: req.body.plate || null,
+        insuranceProvider: req.body.insuranceProvider || null,
+        claimNumber: req.body.claimNumber || null,
+        advisor: req.body.advisor || null,
+        technician: req.body.technician || null,
+        status: req.body.status || "ON_LOT",
+        stage: req.body.stage || null,
+        dateIn: req.body.dateIn ? new Date(req.body.dateIn) : null,
+        promisedDate: req.body.promisedDate ? new Date(req.body.promisedDate) : null,
+        estimatedHours: Number(req.body.estimatedHours || 0),
+        hoursWorked: Number(req.body.hoursWorked || 0),
+        partsOrdered: req.body.partsOrdered || null,
+        partsEta: req.body.partsEta ? new Date(req.body.partsEta) : null,
+        requiredItems: req.body.requiredItems || null,
+        notes: req.body.notes || null,
+        qcNotes: req.body.qcNotes || null,
+        rentalNeeded: req.body.rentalNeeded === "true",
+        customerPortalToken: `portal-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+      }
+    });
+
+    req.flash("success", "Job created.");
+    res.redirect(`/jobs/${job.id}`);
+  } catch (error) {
+    req.flash("error", "Could not create job. RO number may already exist.");
+    res.redirect("/jobs/new");
+  }
+});
+
+app.get("/jobs/:id", requireAuth, async (req, res) => {
+  const job = await prisma.job.findUnique({
+    where: { id: req.params.id }
+  });
+
+  if (!job) {
+    req.flash("error", "Job not found.");
+    return res.redirect("/dashboard");
+  }
+
+  res.render("jobs/form", {
+    title: `Edit Job ${job.roNumber}`,
+    job
+  });
+});
+
+app.post("/jobs/:id", requireAuth, async (req, res) => {
+  try {
+    await prisma.job.update({
+      where: { id: req.params.id },
+      data: {
+        roNumber: req.body.roNumber,
+        customerName: req.body.customerName,
+        customerPhone: req.body.customerPhone || null,
+        customerEmail: req.body.customerEmail || null,
+        year: req.body.year || null,
+        make: req.body.make || null,
+        model: req.body.model || null,
+        color: req.body.color || null,
+        vin: req.body.vin || null,
+        plate: req.body.plate || null,
+        insuranceProvider: req.body.insuranceProvider || null,
+        claimNumber: req.body.claimNumber || null,
+        advisor: req.body.advisor || null,
+        technician: req.body.technician || null,
+        status: req.body.status || "ON_LOT",
+        stage: req.body.stage || null,
+        dateIn: req.body.dateIn ? new Date(req.body.dateIn) : null,
+        promisedDate: req.body.promisedDate ? new Date(req.body.promisedDate) : null,
+        estimatedHours: Number(req.body.estimatedHours || 0),
+        hoursWorked: Number(req.body.hoursWorked || 0),
+        partsOrdered: req.body.partsOrdered || null,
+        partsEta: req.body.partsEta ? new Date(req.body.partsEta) : null,
+        requiredItems: req.body.requiredItems || null,
+        notes: req.body.notes || null,
+        qcNotes: req.body.qcNotes || null,
+        rentalNeeded: req.body.rentalNeeded === "true"
+      }
+    });
+
+    req.flash("success", "Job updated.");
+    res.redirect(`/jobs/${req.params.id}`);
+  } catch (error) {
+    req.flash("error", "Could not update job.");
+    res.redirect(`/jobs/${req.params.id}`);
+  }
 });
 
 app.get("/health", async (req, res) => {
