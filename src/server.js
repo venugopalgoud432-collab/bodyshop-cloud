@@ -140,6 +140,20 @@ app.get("/dashboard", requireAuth, async (req, res) => {
   });
 });
 
+app.get("/production", requireAuth, async (req, res) => {
+  const jobs = await prisma.job.findMany({
+    where: {
+      status: { not: "DELIVERED" }
+    },
+    orderBy: { updatedAt: "desc" }
+  });
+
+  res.render("production/index", {
+    title: "Production Board",
+    jobs
+  });
+});
+
 app.get("/jobs/new", requireAuth, (req, res) => {
   res.render("jobs/form", {
     title: "New Job",
@@ -297,6 +311,24 @@ app.post("/jobs/:id/parts", requireAuth, async (req, res) => {
     res.redirect(`/jobs/${req.params.id}`);
   } catch (error) {
     req.flash("error", "Could not add part.");
+    res.redirect(`/jobs/${req.params.id}`);
+  }
+});
+
+app.post("/jobs/:id/deliver", requireAuth, async (req, res) => {
+  try {
+    await prisma.job.update({
+      where: { id: req.params.id },
+      data: {
+        status: "DELIVERED",
+        stage: "Completed / Delivered"
+      }
+    });
+
+    req.flash("success", "Job marked delivered.");
+    res.redirect(`/jobs/${req.params.id}`);
+  } catch (error) {
+    req.flash("error", "Could not mark job delivered.");
     res.redirect(`/jobs/${req.params.id}`);
   }
 });
