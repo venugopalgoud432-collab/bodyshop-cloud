@@ -12,8 +12,8 @@
     <div class="stat-value"><%= stats.waitingParts %></div>
   </div>
   <div class="stat-card">
-    <div class="stat-label">Hours Left</div>
-    <div class="stat-value"><%= stats.hoursLeft.toFixed(1) %></div>
+    <div class="stat-label">Ready To Deliver</div>
+    <div class="stat-value"><%= stats.readyToDeliver %></div>
   </div>
 </section>
 
@@ -42,7 +42,7 @@
 
     <div>
       <label>Search</label>
-      <input name="q" value="<%= q || '' %>" placeholder="RO, customer, make, model" />
+      <input name="q" value="<%= q || '' %>" placeholder="RO, customer, make, model, VIN, plate" />
     </div>
 
     <div style="display:flex;align-items:flex-end;">
@@ -76,7 +76,10 @@
           <tr class="<%= isOverdue(job) ? 'row-overdue' : (isDueSoon(job) ? 'row-due-soon' : '') %>">
             <td><strong><%= job.roNumber %></strong></td>
             <td><%= job.customerName %></td>
-            <td><%= [job.year, job.make, job.model].filter(Boolean).join(" ") || "—" %></td>
+            <td>
+              <%= [job.year, job.make, job.model].filter(Boolean).join(" ") || "—" %>
+              <% if (job.plate) { %><br><span class="muted">Plate: <%= job.plate %></span><% } %>
+            </td>
             <td>
               <span class="status-pill status-<%= job.status %>">
                 <%= statusLabel(job.status) %>
