@@ -17,6 +17,14 @@
       <% if (currentUser) { %>
         <nav class="nav">
           <a href="/dashboard">Dashboard</a>
+          <a href="/production">Production</a>
+          <a href="/timeclock">Time Clock</a>
+
+          <% if (currentUser.role === "admin" || currentUser.role === "manager") { %>
+            <a href="/admin/users">Staff</a>
+            <a href="/admin/audit">Audit</a>
+          <% } %>
+
           <span class="user-pill"><%= currentUser.name %> · <%= currentUser.role %></span>
           <form action="/logout" method="post" class="inline-form">
             <button class="button secondary small">Logout</button>
@@ -37,7 +45,5 @@
 
     <%- body %>
   </main>
-
-  <script src="/js/app.js"></script>
 </body>
 </html>
