@@ -7,6 +7,8 @@
   --blue:#2563eb;
   --blue-dark:#1d4ed8;
   --red:#b91c1c;
+  --yellow:#b45309;
+  --green:#166534;
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--ink)}
@@ -48,7 +50,53 @@ table{width:100%;border-collapse:collapse}
 th,td{padding:12px 14px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}
 th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#475569;background:#f8fafc}
 .muted{color:var(--muted)}
+
+.status-pill{
+  display:inline-block;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+}
+.status-ON_LOT{background:#e2e8f0;color:#334155}
+.status-WIP{background:#dbeafe;color:#1d4ed8}
+.status-WAITING_PARTS{background:#fef3c7;color:#92400e}
+.status-WAITING_APPROVAL{background:#fae8ff;color:#86198f}
+.status-PAINT{background:#ccfbf1;color:#115e59}
+.status-QC{background:#ede9fe;color:#5b21b6}
+.status-READY_TO_DELIVER{background:#dcfce7;color:#166534}
+.status-DELIVERED{background:#e5e7eb;color:#374151}
+.status-ON_HOLD{background:#fee2e2;color:#991b1b}
+
+.row-overdue{background:#fff1f2}
+.row-due-soon{background:#fffbeb}
+.warn-text{color:var(--red);font-weight:700;font-size:12px}
+.soon-text{color:var(--yellow);font-weight:700;font-size:12px}
+
+.photo-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  margin-top:16px;
+}
+.photo-card{
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  padding:10px;
+  background:#fff;
+}
+.job-photo{
+  width:100%;
+  height:220px;
+  object-fit:cover;
+  border-radius:10px;
+  display:block;
+}
+
+@media (max-width: 900px){
+  .photo-grid{grid-template-columns:repeat(2,1fr)}
+}
 @media (max-width: 700px){
-  .form-grid,.stats-grid{grid-template-columns:1fr}
+  .form-grid,.stats-grid,.photo-grid{grid-template-columns:1fr}
   .brand{font-size:20px}
 }
