@@ -8,6 +8,7 @@
 <section class="card">
   <div class="section-head">
     <h1>Dashboard</h1>
+    <a href="/jobs/new" class="button">New Job</a>
   </div>
 
   <div class="table-wrap">
@@ -19,12 +20,14 @@
           <th>Vehicle</th>
           <th>Status</th>
           <th>Hours</th>
+          <th>Parts ETA</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         <% if (!jobs.length) { %>
           <tr>
-            <td colspan="5" class="muted">No jobs yet.</td>
+            <td colspan="7" class="muted">No jobs yet.</td>
           </tr>
         <% } %>
 
@@ -32,9 +35,16 @@
           <tr>
             <td><strong><%= job.roNumber %></strong></td>
             <td><%= job.customerName %></td>
-            <td><%= [job.year, job.make, job.model].filter(Boolean).join(" ") %></td>
+            <td><%= [job.year, job.make, job.model].filter(Boolean).join(" ") || "—" %></td>
             <td><%= statusLabel(job.status) %></td>
-            <td><%= Number(job.hoursWorked || 0).toFixed(1) %> / <%= Number(job.estimatedHours || 0).toFixed(1) %></td>
+            <td>
+              <%= Number(job.hoursWorked || 0).toFixed(1) %> /
+              <%= Number(job.estimatedHours || 0).toFixed(1) %>
+            </td>
+            <td><%= job.partsEta ? new Date(job.partsEta).toLocaleDateString() : "—" %></td>
+            <td>
+              <a href="/jobs/<%= job.id %>" class="button secondary small">Open</a>
+            </td>
           </tr>
         <% }) %>
       </tbody>
