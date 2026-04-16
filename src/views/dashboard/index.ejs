@@ -15,6 +15,14 @@
     <div class="stat-label">Ready To Deliver</div>
     <div class="stat-value"><%= stats.readyToDeliver %></div>
   </div>
+  <div class="stat-card">
+    <div class="stat-label">Clocked In</div>
+    <div class="stat-value"><%= stats.clockedIn %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Active Techs</div>
+    <div class="stat-value"><%= stats.activeTechs %></div>
+  </div>
 </section>
 
 <section class="card">
@@ -106,6 +114,7 @@
               <div style="display:flex;gap:8px;flex-wrap:wrap;">
                 <a href="/jobs/<%= job.id %>" class="button secondary small">Open</a>
                 <a href="/status/<%= job.customerPortalToken %>" class="button secondary small">Customer</a>
+                <a href="/jobs/<%= job.id %>/print" class="button secondary small" target="_blank">Print</a>
               </div>
             </td>
           </tr>
