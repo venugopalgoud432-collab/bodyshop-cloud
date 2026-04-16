@@ -20,8 +20,34 @@
 <section class="card">
   <div class="section-head">
     <h1>Dashboard</h1>
-    <a href="/jobs/new" class="button">New Job</a>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a href="/jobs/new" class="button">New Job</a>
+      <a href="/timeclock" class="button secondary">Time Clock</a>
+    </div>
   </div>
+
+  <form method="get" action="/dashboard" class="form-grid" style="margin-bottom:16px;">
+    <div>
+      <label>Status Filter</label>
+      <select name="status">
+        <option value="">All</option>
+        <% statusOptions.forEach(option => { %>
+          <option value="<%= option.value %>" <%= filterStatus === option.value ? "selected" : "" %>>
+            <%= option.label %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div>
+      <label>Search</label>
+      <input name="q" value="<%= q || '' %>" placeholder="RO, customer, make, model" />
+    </div>
+
+    <div style="display:flex;align-items:flex-end;">
+      <button class="button">Apply Filters</button>
+    </div>
+  </form>
 
   <div class="table-wrap">
     <table>
@@ -40,7 +66,7 @@
       <tbody>
         <% if (!jobs.length) { %>
           <tr>
-            <td colspan="8" class="muted">No jobs yet.</td>
+            <td colspan="8" class="muted">No jobs found.</td>
           </tr>
         <% } %>
 
@@ -59,8 +85,10 @@
             </td>
             <td><%= job.partsEta ? new Date(job.partsEta).toLocaleDateString() : "—" %></td>
             <td>
-              <a href="/jobs/<%= job.id %>" class="button secondary small">Open</a>
-              <a href="/status/<%= job.customerPortalToken %>" class="button secondary small">Customer</a>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <a href="/jobs/<%= job.id %>" class="button secondary small">Open</a>
+                <a href="/status/<%= job.customerPortalToken %>" class="button secondary small">Customer</a>
+              </div>
             </td>
           </tr>
         <% }) %>
