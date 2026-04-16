@@ -1,0 +1,58 @@
+<section class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Estimated Sales</div>
+    <div class="stat-value">$<%= report.estimatedSales.toFixed(0) %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Gross Profit</div>
+    <div class="stat-value">$<%= report.grossProfit.toFixed(0) %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Avg Cycle Days</div>
+    <div class="stat-value"><%= report.avgCycleDays.toFixed(1) %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Delivered This Month</div>
+    <div class="stat-value"><%= report.deliveredThisMonth %></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <h1>Insurance / KPI Reports</h1>
+    <a href="/dashboard" class="button secondary">Back</a>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>RO</th>
+          <th>Customer</th>
+          <th>Status</th>
+          <th>Cycle Days</th>
+          <th>Est. Sale</th>
+          <th>Gross Profit</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!rows.length) { %>
+          <tr>
+            <td colspan="6" class="muted">No jobs available.</td>
+          </tr>
+        <% } %>
+
+        <% rows.forEach(row => { %>
+          <tr>
+            <td><strong><%= row.roNumber %></strong></td>
+            <td><%= row.customerName %></td>
+            <td><%= statusLabel(row.status) %></td>
+            <td><%= row.cycleDays %></td>
+            <td>$<%= row.sale.toFixed(0) %></td>
+            <td>$<%= row.grossProfit.toFixed(0) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
