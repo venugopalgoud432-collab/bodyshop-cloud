@@ -26,6 +26,13 @@ enum JobStatus {
   ON_HOLD
 }
 
+enum PartStatus {
+  ORDERED
+  RECEIVED
+  BACKORDERED
+  CANCELLED
+}
+
 model User {
   id           String   @id @default(cuid())
   name         String
@@ -38,8 +45,8 @@ model User {
 }
 
 model Job {
-  id                  String    @id @default(cuid())
-  roNumber            String    @unique
+  id                  String      @id @default(cuid())
+  roNumber            String      @unique
   customerName        String
   customerPhone       String?
   customerEmail       String?
@@ -53,19 +60,59 @@ model Job {
   claimNumber         String?
   advisor             String?
   technician          String?
-  status              JobStatus @default(ON_LOT)
+  status              JobStatus   @default(ON_LOT)
   stage               String?
   dateIn              DateTime?
   promisedDate        DateTime?
-  estimatedHours      Float     @default(0)
-  hoursWorked         Float     @default(0)
+  estimatedHours      Float       @default(0)
+  hoursWorked         Float       @default(0)
   partsOrdered        String?
   partsEta            DateTime?
   requiredItems       String?
   notes               String?
   qcNotes             String?
-  rentalNeeded        Boolean   @default(false)
-  customerPortalToken String    @unique
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  rentalNeeded        Boolean     @default(false)
+  customerPortalToken String      @unique
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  updates             JobUpdate[]
+  parts               Part[]
+  photos              JobPhoto[]
+}
+
+model JobUpdate {
+  id              String   @id @default(cuid())
+  jobId           String
+  message         String
+  customerVisible Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  job             Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+model Part {
+  id         String     @id @default(cuid())
+  jobId      String
+  name       String
+  vendor     String?
+  quantity   Int        @default(1)
+  eta        DateTime?
+  status     PartStatus @default(ORDERED)
+  notes      String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  job        Job        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+model JobPhoto {
+  id           String   @id @default(cuid())
+  jobId        String
+  originalName String
+  filePath     String
+  caption      String?
+  createdAt    DateTime @default(now())
+
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
 }
