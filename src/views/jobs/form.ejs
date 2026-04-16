@@ -1,7 +1,12 @@
 <section class="card">
   <div class="section-head">
     <h1><%= job ? `Edit Job ${job.roNumber}` : "New Job" %></h1>
-    <a href="/dashboard" class="button secondary">Back</a>
+    <div>
+      <a href="/dashboard" class="button secondary">Back</a>
+      <% if (job) { %>
+        <a href="/status/<%= job.customerPortalToken %>" class="button secondary">Customer Page</a>
+      <% } %>
+    </div>
   </div>
 
   <form action="<%= job ? `/jobs/${job.id}` : '/jobs' %>" method="post" class="form-grid">
@@ -148,4 +153,43 @@
       <button class="button"><%= job ? "Save Changes" : "Create Job" %></button>
     </div>
   </form>
+
+  <% if (job) { %>
+    <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;">
+
+    <h2>Post Internal or Customer Update</h2>
+    <form action="/jobs/<%= job.id %>/updates" method="post" class="form-grid">
+      <div class="full">
+        <label>Update Message</label>
+        <textarea name="message" required></textarea>
+      </div>
+
+      <div>
+        <label>Visible to Customer</label>
+        <select name="customerVisible">
+          <option value="false">No</option>
+          <option value="true">Yes</option>
+        </select>
+      </div>
+
+      <div style="display:flex;align-items:flex-end;">
+        <button class="button">Add Update</button>
+      </div>
+    </form>
+
+    <% if (updates && updates.length) { %>
+      <div style="margin-top:20px;">
+        <h2>Job Updates</h2>
+        <% updates.forEach(update => { %>
+          <div class="card" style="margin-top:12px;">
+            <div><strong><%= update.message %></strong></div>
+            <div class="muted" style="margin-top:6px;">
+              <%= update.customerVisible ? "Customer Visible" : "Internal Only" %> ·
+              <%= new Date(update.createdAt).toLocaleString() %>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  <% } %>
 </section>
