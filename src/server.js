@@ -139,7 +139,9 @@ app.get("/dashboard", requireAuth, async (req, res) => {
                 { roNumber: { contains: q, mode: "insensitive" } },
                 { customerName: { contains: q, mode: "insensitive" } },
                 { make: { contains: q, mode: "insensitive" } },
-                { model: { contains: q, mode: "insensitive" } }
+                { model: { contains: q, mode: "insensitive" } },
+                { vin: { contains: q, mode: "insensitive" } },
+                { plate: { contains: q, mode: "insensitive" } }
               ]
             }
           : {}
@@ -158,6 +160,7 @@ app.get("/dashboard", requireAuth, async (req, res) => {
       totalJobs: allJobs.length,
       openJobs: allJobs.filter((j) => j.status !== "DELIVERED").length,
       waitingParts: allJobs.filter((j) => j.status === "WAITING_PARTS").length,
+      readyToDeliver: allJobs.filter((j) => j.status === "READY_TO_DELIVER").length,
       hoursLeft: allJobs.reduce(
         (sum, job) => sum + Math.max(Number(job.estimatedHours || 0) - Number(job.hoursWorked || 0), 0),
         0
@@ -249,7 +252,6 @@ app.post("/jobs", requireAuth, async (req, res) => {
   }
 });
 
-// SAFE JOB OPEN ROUTE
 app.get("/jobs/:id", requireAuth, async (req, res) => {
   try {
     const job = await prisma.job.findUnique({
@@ -373,6 +375,31 @@ app.post("/jobs/:id/photos", requireAuth, upload.single("photo"), async (req, re
   }
 });
 
+app.post("/photos/:id/delete", requireAuth, async (req, res) => {
+  try {
+    const photo = await prisma.jobPhoto.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (photo) {
+      const absolutePath = path.join(process.cwd(), photo.filePath.replace(/^\//, ""));
+      if (fs.existsSync(absolutePath)) {
+        fs.unlinkSync(absolutePath);
+      }
+      await prisma.jobPhoto.delete({
+        where: { id: req.params.id }
+      });
+    }
+
+    req.flash("success", "Photo deleted.");
+    res.redirect(`/jobs/${req.body.jobId}`);
+  } catch (error) {
+    console.error("PHOTO DELETE ERROR:", error);
+    req.flash("error", "Could not delete photo.");
+    res.redirect(`/jobs/${req.body.jobId}`);
+  }
+});
+
 app.post("/jobs/:id/updates", requireAuth, async (req, res) => {
   try {
     await prisma.jobUpdate.create({
@@ -412,6 +439,24 @@ app.post("/jobs/:id/parts", requireAuth, async (req, res) => {
     console.error("ADD PART ERROR:", error);
     req.flash("error", "Could not add part.");
     res.redirect(`/jobs/${req.params.id}`);
+  }
+});
+
+app.post("/parts/:id/status", requireAuth, async (req, res) => {
+  try {
+    await prisma.part.update({
+      where: { id: req.params.id },
+      data: {
+        status: req.body.status
+      }
+    });
+
+    req.flash("success", "Part status updated.");
+    res.redirect(`/jobs/${req.body.jobId}`);
+  } catch (error) {
+    console.error("PART STATUS ERROR:", error);
+    req.flash("error", "Could not update part status.");
+    res.redirect(`/jobs/${req.body.jobId}`);
   }
 });
 
