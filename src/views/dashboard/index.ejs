@@ -25,37 +25,10 @@
   </div>
 </section>
 
-<section class="stats-grid">
-  <div class="stat-card">
-    <div class="stat-label">Estimated Sales</div>
-    <div class="stat-value">$<%= stats.estimatedSales.toFixed(0) %></div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Avg Cycle Days</div>
-    <div class="stat-value"><%= stats.avgCycleDays.toFixed(1) %></div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Overdue Jobs</div>
-    <div class="stat-value"><%= stats.overdueJobs %></div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Delivered This Month</div>
-    <div class="stat-value"><%= stats.deliveredThisMonth %></div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Active Techs</div>
-    <div class="stat-value"><%= stats.activeTechs %></div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Labour Potential</div>
-    <div class="stat-value">$<%= stats.labourPotential.toFixed(0) %></div>
-  </div>
-</section>
-
 <section class="card">
   <div class="section-head">
     <h1>Dashboard</h1>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <div class="mobile-stack">
       <a href="/jobs/new" class="button">New Job</a>
       <a href="/timeclock" class="button secondary">Time Clock</a>
       <a href="/production" class="button secondary">Production Board</a>
@@ -92,41 +65,45 @@
         <tr>
           <th>RO</th>
           <th>Customer</th>
-          <th>Vehicle</th>
           <th>Status</th>
+          <th>Technician</th>
           <th>Hours</th>
-          <th>Sale</th>
-          <th>Profit</th>
+          <th>Promised</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         <% if (!jobs.length) { %>
           <tr>
-            <td colspan="8" class="muted">No jobs found.</td>
+            <td colspan="7" class="muted">No jobs found.</td>
           </tr>
         <% } %>
 
-        <% jobs.forEach(job => { 
-          const labourSale = Number(job.estimatedHours || 0) * Number(job.labourRate || 0);
-          const sale = Number(job.estimatedSale || 0) || labourSale + Number(job.partsCost || 0);
-          const grossProfit = sale - Number(job.partsCost || 0) - Number(job.otherCost || 0);
-        %>
+        <% jobs.forEach(job => { %>
           <tr class="<%= isOverdue(job) ? 'row-overdue' : (isDueSoon(job) ? 'row-due-soon' : '') %>">
-            <td><strong><%= job.roNumber %></strong></td>
-            <td><%= job.customerName %></td>
-            <td><%= [job.year, job.make, job.model].filter(Boolean).join(" ") || "—" %></td>
             <td>
-              <span class="status-pill status-<%= job.status %>"><%= statusLabel(job.status) %></span>
+              <strong><%= job.roNumber %></strong><br>
+              <span class="muted"><%= job.customerName %></span>
             </td>
+            <td>
+              <%= [job.year, job.make, job.model].filter(Boolean).join(" ") || "—" %>
+            </td>
+            <td>
+              <span class="status-pill status-<%= job.status %>"><%= statusLabel(job.status) %></span><br>
+              <span class="muted"><%= job.stage || "—" %></span>
+            </td>
+            <td><%= job.technician || "Unassigned" %></td>
             <td>
               <%= Number(job.hoursWorked || 0).toFixed(1) %> /
               <%= Number(job.estimatedHours || 0).toFixed(1) %>
             </td>
-            <td>$<%= sale.toFixed(0) %></td>
-            <td>$<%= grossProfit.toFixed(0) %></td>
             <td>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <% if (job.promisedDate) { %>
+                <%= new Date(job.promisedDate).toLocaleDateString() %>
+              <% } else { %>—<% } %>
+            </td>
+            <td>
+              <div class="mobile-stack">
                 <a href="/jobs/<%= job.id %>" class="button secondary small">Open</a>
                 <a href="/jobs/<%= job.id %>/print" class="button secondary small" target="_blank">Print</a>
               </div>
