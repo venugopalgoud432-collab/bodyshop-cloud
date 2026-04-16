@@ -33,15 +33,23 @@ enum PartStatus {
   CANCELLED
 }
 
+enum TimeEntryStatus {
+  CLOCKED_IN
+  CLOCKED_OUT
+}
+
 model User {
-  id           String   @id @default(cuid())
+  id           String      @id @default(cuid())
   name         String
-  email        String   @unique
+  email        String      @unique
   passwordHash String
   role         Role
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isActive     Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  timeEntries  TimeEntry[]
+  auditLogs    AuditLog[]
 }
 
 model Job {
@@ -79,6 +87,8 @@ model Job {
   updates             JobUpdate[]
   parts               Part[]
   photos              JobPhoto[]
+  timeEntries         TimeEntry[]
+  auditLogs           AuditLog[]
 }
 
 model JobUpdate {
@@ -115,4 +125,32 @@ model JobPhoto {
   createdAt    DateTime @default(now())
 
   job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+}
+
+model TimeEntry {
+  id             String          @id @default(cuid())
+  userId         String
+  jobId          String?
+  technicianName String?
+  startedAt      DateTime
+  endedAt        DateTime?
+  status         TimeEntryStatus @default(CLOCKED_IN)
+  notes          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  job            Job?            @relation(fields: [jobId], references: [id], onDelete: SetNull)
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  jobId      String?
+  action     String
+  details    String?
+  createdAt  DateTime @default(now())
+
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  job        Job?     @relation(fields: [jobId], references: [id], onDelete: SetNull)
 }
