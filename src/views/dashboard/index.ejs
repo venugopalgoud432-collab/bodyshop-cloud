@@ -1,0 +1,43 @@
+<section class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Jobs</div>
+    <div class="stat-value"><%= jobs.length %></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <h1>Dashboard</h1>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>RO</th>
+          <th>Customer</th>
+          <th>Vehicle</th>
+          <th>Status</th>
+          <th>Hours</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!jobs.length) { %>
+          <tr>
+            <td colspan="5" class="muted">No jobs yet.</td>
+          </tr>
+        <% } %>
+
+        <% jobs.forEach(job => { %>
+          <tr>
+            <td><strong><%= job.roNumber %></strong></td>
+            <td><%= job.customerName %></td>
+            <td><%= [job.year, job.make, job.model].filter(Boolean).join(" ") %></td>
+            <td><%= statusLabel(job.status) %></td>
+            <td><%= Number(job.hoursWorked || 0).toFixed(1) %> / <%= Number(job.estimatedHours || 0).toFixed(1) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
