@@ -158,6 +158,39 @@
     <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;">
 
     <div class="section-head">
+      <h2>Photos</h2>
+    </div>
+
+    <form action="/jobs/<%= job.id %>/photos" method="post" enctype="multipart/form-data" class="form-grid">
+      <div>
+        <label>Select Photo</label>
+        <input type="file" name="photo" accept="image/*" required />
+      </div>
+
+      <div>
+        <label>Caption</label>
+        <input name="caption" />
+      </div>
+
+      <div class="full">
+        <button class="button">Upload Photo</button>
+      </div>
+    </form>
+
+    <% if (photos && photos.length) { %>
+      <div class="photo-grid">
+        <% photos.forEach(photo => { %>
+          <div class="photo-card">
+            <img src="<%= photo.filePath %>" alt="Job photo" class="job-photo" />
+            <div class="muted" style="margin-top:8px;"><%= photo.caption || "No caption" %></div>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+
+    <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;">
+
+    <div class="section-head">
       <h2>Parts</h2>
     </div>
 
