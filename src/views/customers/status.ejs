@@ -32,6 +32,20 @@
     <p><%= job.partsEta ? new Date(job.partsEta).toLocaleDateString() : "—" %></p>
   </div>
 
+  <% if (photos && photos.length) { %>
+    <div class="card" style="margin-top:16px;">
+      <h2>Repair Photos</h2>
+      <div class="photo-grid">
+        <% photos.forEach(photo => { %>
+          <div class="photo-card">
+            <img src="<%= photo.filePath %>" alt="Repair photo" class="job-photo" />
+            <div class="muted" style="margin-top:8px;"><%= photo.caption || "No caption" %></div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  <% } %>
+
   <div class="card" style="margin-top:16px;">
     <h2>Updates</h2>
     <% if (!updates.length) { %>
