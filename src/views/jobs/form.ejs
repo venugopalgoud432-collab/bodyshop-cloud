@@ -183,6 +183,10 @@
           <div class="photo-card">
             <img src="<%= photo.filePath %>" alt="Job photo" class="job-photo" />
             <div class="muted" style="margin-top:8px;"><%= photo.caption || "No caption" %></div>
+            <form action="/photos/<%= photo.id %>/delete" method="post" style="margin-top:10px;">
+              <input type="hidden" name="jobId" value="<%= job.id %>" />
+              <button class="button secondary small">Delete Photo</button>
+            </form>
           </div>
         <% }) %>
       </div>
@@ -246,6 +250,7 @@
               <th>Status</th>
               <th>ETA</th>
               <th>Notes</th>
+              <th>Update</th>
             </tr>
           </thead>
           <tbody>
@@ -257,6 +262,18 @@
                 <td><%= part.status %></td>
                 <td><%= part.eta ? new Date(part.eta).toLocaleDateString() : "—" %></td>
                 <td><%= part.notes || "—" %></td>
+                <td>
+                  <form action="/parts/<%= part.id %>/status" method="post" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <input type="hidden" name="jobId" value="<%= job.id %>" />
+                    <select name="status">
+                      <option value="ORDERED" <%= part.status === "ORDERED" ? "selected" : "" %>>Ordered</option>
+                      <option value="RECEIVED" <%= part.status === "RECEIVED" ? "selected" : "" %>>Received</option>
+                      <option value="BACKORDERED" <%= part.status === "BACKORDERED" ? "selected" : "" %>>Backordered</option>
+                      <option value="CANCELLED" <%= part.status === "CANCELLED" ? "selected" : "" %>>Cancelled</option>
+                    </select>
+                    <button class="button secondary small">Save</button>
+                  </form>
+                </td>
               </tr>
             <% }) %>
           </tbody>
