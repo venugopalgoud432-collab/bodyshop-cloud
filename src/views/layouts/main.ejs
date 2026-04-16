@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> | Body Shop Cloud</title>
+  <link rel="stylesheet" href="/css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div>
+        <a href="/dashboard" class="brand">Body Shop Cloud</a>
+        <div class="tagline">Auto body workflow, jobs, parts, hours, and customer updates</div>
+      </div>
+
+      <% if (currentUser) { %>
+        <nav class="nav">
+          <a href="/dashboard">Dashboard</a>
+          <span class="user-pill"><%= currentUser.name %> · <%= currentUser.role %></span>
+          <form action="/logout" method="post" class="inline-form">
+            <button class="button secondary small">Logout</button>
+          </form>
+        </nav>
+      <% } %>
+    </div>
+  </header>
+
+  <main class="container page">
+    <% if (flashSuccess && flashSuccess.length) { %>
+      <div class="flash success"><%= flashSuccess[0] %></div>
+    <% } %>
+
+    <% if (flashError && flashError.length) { %>
+      <div class="flash error"><%= flashError[0] %></div>
+    <% } %>
+
+    <%- body %>
+  </main>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
