@@ -99,16 +99,28 @@ app.get("/dashboard", requireAuth, async (req, res) => {
     take: 50
   });
 
+  const stats = {
+    totalJobs: jobs.length,
+    openJobs: jobs.filter((j) => j.status !== "DELIVERED").length,
+    waitingParts: jobs.filter((j) => j.status === "WAITING_PARTS").length,
+    hoursLeft: jobs.reduce(
+      (sum, job) => sum + Math.max(Number(job.estimatedHours || 0) - Number(job.hoursWorked || 0), 0),
+      0
+    )
+  };
+
   res.render("dashboard/index", {
     title: "Dashboard",
-    jobs
+    jobs,
+    stats
   });
 });
 
 app.get("/jobs/new", requireAuth, (req, res) => {
   res.render("jobs/form", {
     title: "New Job",
-    job: null
+    job: null,
+    updates: []
   });
 });
 
@@ -164,9 +176,15 @@ app.get("/jobs/:id", requireAuth, async (req, res) => {
     return res.redirect("/dashboard");
   }
 
+  const updates = await prisma.jobUpdate.findMany({
+    where: { jobId: job.id },
+    orderBy: { createdAt: "desc" }
+  });
+
   res.render("jobs/form", {
     title: `Edit Job ${job.roNumber}`,
-    job
+    job,
+    updates
   });
 });
 
@@ -210,6 +228,48 @@ app.post("/jobs/:id", requireAuth, async (req, res) => {
     req.flash("error", "Could not update job.");
     res.redirect(`/jobs/${req.params.id}`);
   }
+});
+
+app.post("/jobs/:id/updates", requireAuth, async (req, res) => {
+  try {
+    await prisma.jobUpdate.create({
+      data: {
+        jobId: req.params.id,
+        message: req.body.message,
+        customerVisible: req.body.customerVisible === "true"
+      }
+    });
+
+    req.flash("success", "Update added.");
+    res.redirect(`/jobs/${req.params.id}`);
+  } catch (error) {
+    req.flash("error", "Could not add update.");
+    res.redirect(`/jobs/${req.params.id}`);
+  }
+});
+
+app.get("/status/:token", async (req, res) => {
+  const job = await prisma.job.findUnique({
+    where: { customerPortalToken: req.params.token }
+  });
+
+  if (!job) {
+    return res.status(404).send("Status page not found");
+  }
+
+  const updates = await prisma.jobUpdate.findMany({
+    where: {
+      jobId: job.id,
+      customerVisible: true
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  res.render("customers/status", {
+    title: `Status ${job.roNumber}`,
+    job,
+    updates
+  });
 });
 
 app.get("/health", async (req, res) => {
