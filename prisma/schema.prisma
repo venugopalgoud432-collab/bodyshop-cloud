@@ -72,8 +72,13 @@ model Job {
   stage               String?
   dateIn              DateTime?
   promisedDate        DateTime?
+  deliveredAt         DateTime?
   estimatedHours      Float       @default(0)
   hoursWorked         Float       @default(0)
+  labourRate          Float       @default(0)
+  partsCost           Float       @default(0)
+  otherCost           Float       @default(0)
+  estimatedSale       Float       @default(0)
   partsOrdered        String?
   partsEta            DateTime?
   requiredItems       String?
