@@ -1,0 +1,48 @@
+<section class="card">
+  <div class="section-head">
+    <h1>Repair Status</h1>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">RO</div>
+      <div class="stat-value" style="font-size:22px;"><%= job.roNumber %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Status</div>
+      <div class="stat-value" style="font-size:22px;"><%= statusLabel(job.status) %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Stage</div>
+      <div class="stat-value" style="font-size:22px;"><%= job.stage || "—" %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Promised Date</div>
+      <div class="stat-value" style="font-size:22px;"><%= job.promisedDate ? new Date(job.promisedDate).toLocaleDateString() : "—" %></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h2>Vehicle</h2>
+    <p><%= [job.year, job.make, job.model, job.color].filter(Boolean).join(" ") || "—" %></p>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h2>Parts ETA</h2>
+    <p><%= job.partsEta ? new Date(job.partsEta).toLocaleDateString() : "—" %></p>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <h2>Updates</h2>
+    <% if (!updates.length) { %>
+      <p class="muted">No customer-visible updates yet.</p>
+    <% } %>
+
+    <% updates.forEach(update => { %>
+      <div style="padding:12px 0;border-bottom:1px solid #e2e8f0;">
+        <div><strong><%= update.message %></strong></div>
+        <div class="muted" style="margin-top:6px;"><%= new Date(update.createdAt).toLocaleString() %></div>
+      </div>
+    <% }) %>
+  </div>
+</section>
