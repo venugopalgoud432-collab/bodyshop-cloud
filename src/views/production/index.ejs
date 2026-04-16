@@ -1,0 +1,39 @@
+<section class="card">
+  <div class="section-head">
+    <h1>Production Board</h1>
+    <a href="/dashboard" class="button secondary">Back</a>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>RO</th>
+          <th>Customer</th>
+          <th>Status</th>
+          <th>Stage</th>
+          <th>Technician</th>
+          <th>Hours Left</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!jobs.length) { %>
+          <tr>
+            <td colspan="6" class="muted">No active jobs.</td>
+          </tr>
+        <% } %>
+
+        <% jobs.forEach(job => { %>
+          <tr>
+            <td><strong><%= job.roNumber %></strong></td>
+            <td><%= job.customerName %></td>
+            <td><%= statusLabel(job.status) %></td>
+            <td><%= job.stage || "—" %></td>
+            <td><%= job.technician || "Unassigned" %></td>
+            <td><%= hoursLeft(job).toFixed(1) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
