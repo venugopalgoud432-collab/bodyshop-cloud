@@ -1,7 +1,7 @@
 <section class="card">
   <div class="section-head">
     <h1><%= job ? `Edit Job ${job.roNumber}` : "New Job" %></h1>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <div class="mobile-stack">
       <a href="/dashboard" class="button secondary">Back</a>
       <% if (job) { %>
         <a href="/status/<%= job.customerPortalToken %>" class="button secondary">Customer Page</a>
@@ -9,6 +9,34 @@
       <% } %>
     </div>
   </div>
+
+  <% if (job) { %>
+    <div class="quick-actions">
+      <form action="/jobs/<%= job.id %>/quick-status" method="post">
+        <input type="hidden" name="status" value="WIP" />
+        <input type="hidden" name="stage" value="In Progress" />
+        <button class="button">Start Work</button>
+      </form>
+
+      <form action="/jobs/<%= job.id %>/quick-status" method="post">
+        <input type="hidden" name="status" value="WAITING_PARTS" />
+        <input type="hidden" name="stage" value="Waiting on Parts" />
+        <button class="button warn">Waiting Parts</button>
+      </form>
+
+      <form action="/jobs/<%= job.id %>/quick-status" method="post">
+        <input type="hidden" name="status" value="QC" />
+        <input type="hidden" name="stage" value="Quality Check" />
+        <button class="button secondary">Move to QC</button>
+      </form>
+
+      <form action="/jobs/<%= job.id %>/quick-status" method="post">
+        <input type="hidden" name="status" value="READY_TO_DELIVER" />
+        <input type="hidden" name="stage" value="Ready for Pickup" />
+        <button class="button success">Ready to Deliver</button>
+      </form>
+    </div>
+  <% } %>
 
   <form action="<%= job ? `/jobs/${job.id}` : '/jobs' %>" method="post" class="form-grid">
     <div>
