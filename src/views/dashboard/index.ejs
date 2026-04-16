@@ -1,7 +1,19 @@
 <section class="stats-grid">
   <div class="stat-card">
     <div class="stat-label">Jobs</div>
-    <div class="stat-value"><%= jobs.length %></div>
+    <div class="stat-value"><%= stats.totalJobs %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Open Jobs</div>
+    <div class="stat-value"><%= stats.openJobs %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Waiting Parts</div>
+    <div class="stat-value"><%= stats.waitingParts %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Hours Left</div>
+    <div class="stat-value"><%= stats.hoursLeft.toFixed(1) %></div>
   </div>
 </section>
 
@@ -19,6 +31,7 @@
           <th>Customer</th>
           <th>Vehicle</th>
           <th>Status</th>
+          <th>Stage</th>
           <th>Hours</th>
           <th>Parts ETA</th>
           <th>Actions</th>
@@ -27,7 +40,7 @@
       <tbody>
         <% if (!jobs.length) { %>
           <tr>
-            <td colspan="7" class="muted">No jobs yet.</td>
+            <td colspan="8" class="muted">No jobs yet.</td>
           </tr>
         <% } %>
 
@@ -37,13 +50,17 @@
             <td><%= job.customerName %></td>
             <td><%= [job.year, job.make, job.model].filter(Boolean).join(" ") || "—" %></td>
             <td><%= statusLabel(job.status) %></td>
+            <td><%= job.stage || "—" %></td>
             <td>
               <%= Number(job.hoursWorked || 0).toFixed(1) %> /
               <%= Number(job.estimatedHours || 0).toFixed(1) %>
+              <br>
+              <span class="muted"><%= hoursLeft(job).toFixed(1) %> left</span>
             </td>
             <td><%= job.partsEta ? new Date(job.partsEta).toLocaleDateString() : "—" %></td>
             <td>
               <a href="/jobs/<%= job.id %>" class="button secondary small">Open</a>
+              <a href="/status/<%= job.customerPortalToken %>" class="button secondary small">Customer</a>
             </td>
           </tr>
         <% }) %>
