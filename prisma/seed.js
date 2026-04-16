@@ -4,16 +4,35 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 async function main() {
-  const passwordHash = await bcrypt.hash("ChangeMe123!", 10);
+  const adminHash = await bcrypt.hash("ChangeMe123!", 10);
+  const techHash = await bcrypt.hash("Tech12345!", 10);
 
   await prisma.user.upsert({
     where: { email: "admin@bodyshop.local" },
-    update: {},
+    update: {
+      role: "admin",
+      isActive: true
+    },
     create: {
       name: "Admin User",
       email: "admin@bodyshop.local",
-      passwordHash,
+      passwordHash: adminHash,
       role: "admin",
+      isActive: true
+    }
+  });
+
+  await prisma.user.upsert({
+    where: { email: "tech@bodyshop.local" },
+    update: {
+      role: "tech",
+      isActive: true
+    },
+    create: {
+      name: "Mike Tech",
+      email: "tech@bodyshop.local",
+      passwordHash: techHash,
+      role: "tech",
       isActive: true
     }
   });
