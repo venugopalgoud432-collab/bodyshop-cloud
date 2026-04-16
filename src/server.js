@@ -171,12 +171,23 @@ app.get("/dashboard", requireAuth, async (req, res) => {
     });
 
     const allJobs = await prisma.job.findMany();
+    const activeEntries = await prisma.timeEntry.findMany({
+      where: { status: "CLOCKED_IN" }
+    });
+
+    const activeTechsSet = new Set(
+      allJobs
+        .filter((j) => !!j.technician && j.status !== "DELIVERED")
+        .map((j) => j.technician)
+    );
 
     const stats = {
       totalJobs: allJobs.length,
       openJobs: allJobs.filter((j) => j.status !== "DELIVERED").length,
       waitingParts: allJobs.filter((j) => j.status === "WAITING_PARTS").length,
-      readyToDeliver: allJobs.filter((j) => j.status === "READY_TO_DELIVER").length
+      readyToDeliver: allJobs.filter((j) => j.status === "READY_TO_DELIVER").length,
+      clockedIn: activeEntries.length,
+      activeTechs: activeTechsSet.size
     };
 
     res.render("dashboard/index", {
@@ -641,6 +652,105 @@ app.post("/timeclock/:id/out", requireRole(["admin", "manager", "tech"]), async 
     console.error("CLOCK OUT ERROR:", error);
     req.flash("error", "Could not punch out.");
     res.redirect("/timeclock");
+  }
+});
+
+app.get("/admin/users", requireRole(["admin", "manager"]), async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      orderBy: { createdAt: "desc" }
+    });
+
+    res.render("admin/users", {
+      title: "Staff Management",
+      users
+    });
+  } catch (error) {
+    console.error("ADMIN USERS ERROR:", error);
+    res.status(500).send("Error loading staff page");
+  }
+});
+
+app.post("/admin/users", requireRole(["admin", "manager"]), async (req, res) => {
+  try {
+    const passwordHash = await bcrypt.hash(req.body.password, 10);
+
+    await prisma.user.create({
+      data: {
+        name: req.body.name,
+        email: req.body.email.toLowerCase().trim(),
+        passwordHash,
+        role: req.body.role,
+        isActive: true
+      }
+    });
+
+    await writeAudit(
+      req.session.user.id,
+      null,
+      "USER_CREATED",
+      `Created staff user ${req.body.email}`
+    );
+
+    req.flash("success", "Staff user created.");
+    res.redirect("/admin/users");
+  } catch (error) {
+    console.error("CREATE USER ERROR:", error);
+    req.flash("error", "Could not create staff user.");
+    res.redirect("/admin/users");
+  }
+});
+
+app.post("/admin/users/:id/toggle", requireRole(["admin", "manager"]), async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (!user) {
+      req.flash("error", "User not found.");
+      return res.redirect("/admin/users");
+    }
+
+    await prisma.user.update({
+      where: { id: req.params.id },
+      data: { isActive: !user.isActive }
+    });
+
+    await writeAudit(
+      req.session.user.id,
+      null,
+      "USER_STATUS_CHANGED",
+      `${user.email} => ${!user.isActive ? "active" : "inactive"}`
+    );
+
+    req.flash("success", "User updated.");
+    res.redirect("/admin/users");
+  } catch (error) {
+    console.error("TOGGLE USER ERROR:", error);
+    req.flash("error", "Could not update user.");
+    res.redirect("/admin/users");
+  }
+});
+
+app.get("/admin/audit", requireRole(["admin", "manager"]), async (req, res) => {
+  try {
+    const logs = await prisma.auditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 200,
+      include: {
+        user: true,
+        job: true
+      }
+    });
+
+    res.render("admin/audit", {
+      title: "Audit Log",
+      logs
+    });
+  } catch (error) {
+    console.error("AUDIT PAGE ERROR:", error);
+    res.status(500).send("Error loading audit log");
   }
 });
 
