@@ -1,0 +1,151 @@
+<section class="card">
+  <div class="section-head">
+    <h1><%= job ? `Edit Job ${job.roNumber}` : "New Job" %></h1>
+    <a href="/dashboard" class="button secondary">Back</a>
+  </div>
+
+  <form action="<%= job ? `/jobs/${job.id}` : '/jobs' %>" method="post" class="form-grid">
+    <div>
+      <label>RO Number</label>
+      <input name="roNumber" required value="<%= job?.roNumber || '' %>" />
+    </div>
+
+    <div>
+      <label>Status</label>
+      <select name="status">
+        <% statusOptions.forEach(option => { %>
+          <option value="<%= option.value %>" <%= (job?.status || "ON_LOT") === option.value ? "selected" : "" %>>
+            <%= option.label %>
+          </option>
+        <% }) %>
+      </select>
+    </div>
+
+    <div>
+      <label>Customer Name</label>
+      <input name="customerName" required value="<%= job?.customerName || '' %>" />
+    </div>
+
+    <div>
+      <label>Customer Phone</label>
+      <input name="customerPhone" value="<%= job?.customerPhone || '' %>" />
+    </div>
+
+    <div>
+      <label>Customer Email</label>
+      <input type="email" name="customerEmail" value="<%= job?.customerEmail || '' %>" />
+    </div>
+
+    <div>
+      <label>Advisor</label>
+      <input name="advisor" value="<%= job?.advisor || '' %>" />
+    </div>
+
+    <div>
+      <label>Year</label>
+      <input name="year" value="<%= job?.year || '' %>" />
+    </div>
+
+    <div>
+      <label>Make</label>
+      <input name="make" value="<%= job?.make || '' %>" />
+    </div>
+
+    <div>
+      <label>Model</label>
+      <input name="model" value="<%= job?.model || '' %>" />
+    </div>
+
+    <div>
+      <label>Color</label>
+      <input name="color" value="<%= job?.color || '' %>" />
+    </div>
+
+    <div>
+      <label>VIN</label>
+      <input name="vin" value="<%= job?.vin || '' %>" />
+    </div>
+
+    <div>
+      <label>Plate</label>
+      <input name="plate" value="<%= job?.plate || '' %>" />
+    </div>
+
+    <div>
+      <label>Insurance Provider</label>
+      <input name="insuranceProvider" value="<%= job?.insuranceProvider || '' %>" />
+    </div>
+
+    <div>
+      <label>Claim Number</label>
+      <input name="claimNumber" value="<%= job?.claimNumber || '' %>" />
+    </div>
+
+    <div>
+      <label>Technician</label>
+      <input name="technician" value="<%= job?.technician || '' %>" />
+    </div>
+
+    <div>
+      <label>Stage</label>
+      <input name="stage" value="<%= job?.stage || '' %>" />
+    </div>
+
+    <div>
+      <label>Date In</label>
+      <input type="date" name="dateIn" value="<%= job ? formatDateInput(job.dateIn) : '' %>" />
+    </div>
+
+    <div>
+      <label>Promised Date</label>
+      <input type="date" name="promisedDate" value="<%= job ? formatDateInput(job.promisedDate) : '' %>" />
+    </div>
+
+    <div>
+      <label>Estimated Hours</label>
+      <input type="number" step="0.1" min="0" name="estimatedHours" value="<%= job?.estimatedHours ?? 0 %>" />
+    </div>
+
+    <div>
+      <label>Hours Worked</label>
+      <input type="number" step="0.1" min="0" name="hoursWorked" value="<%= job?.hoursWorked ?? 0 %>" />
+    </div>
+
+    <div>
+      <label>Parts ETA</label>
+      <input type="date" name="partsEta" value="<%= job ? formatDateInput(job.partsEta) : '' %>" />
+    </div>
+
+    <div>
+      <label>Rental Needed</label>
+      <select name="rentalNeeded">
+        <option value="false" <%= !job?.rentalNeeded ? "selected" : "" %>>No</option>
+        <option value="true" <%= job?.rentalNeeded ? "selected" : "" %>>Yes</option>
+      </select>
+    </div>
+
+    <div class="full">
+      <label>Parts Ordered / Needed</label>
+      <textarea name="partsOrdered"><%= job?.partsOrdered || '' %></textarea>
+    </div>
+
+    <div class="full">
+      <label>Required Items / Approvals</label>
+      <textarea name="requiredItems"><%= job?.requiredItems || '' %></textarea>
+    </div>
+
+    <div class="full">
+      <label>Repair Notes</label>
+      <textarea name="notes"><%= job?.notes || '' %></textarea>
+    </div>
+
+    <div class="full">
+      <label>QC Notes</label>
+      <textarea name="qcNotes"><%= job?.qcNotes || '' %></textarea>
+    </div>
+
+    <div class="full">
+      <button class="button"><%= job ? "Save Changes" : "Create Job" %></button>
+    </div>
+  </form>
+</section>
