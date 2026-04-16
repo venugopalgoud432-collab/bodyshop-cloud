@@ -267,5 +267,15 @@
         <% }) %>
       </div>
     <% } %>
+
+    <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;">
+
+    <div class="section-head">
+      <h2>Workflow</h2>
+    </div>
+
+    <form action="/jobs/<%= job.id %>/deliver" method="post">
+      <button class="button secondary">Mark Delivered</button>
+    </form>
   <% } %>
 </section>
