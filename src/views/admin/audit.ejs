@@ -1,0 +1,44 @@
+<section class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Recent Logs</div>
+    <div class="stat-value"><%= logs.length %></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <h1>Audit Log</h1>
+    <a href="/dashboard" class="button secondary">Back</a>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>When</th>
+          <th>User</th>
+          <th>Action</th>
+          <th>Job</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!logs.length) { %>
+          <tr>
+            <td colspan="5" class="muted">No audit entries yet.</td>
+          </tr>
+        <% } %>
+
+        <% logs.forEach(log => { %>
+          <tr>
+            <td><%= new Date(log.createdAt).toLocaleString() %></td>
+            <td><%= log.user ? `${log.user.name} (${log.user.email})` : "System" %></td>
+            <td><strong><%= log.action %></strong></td>
+            <td><%= log.job ? log.job.roNumber : "—" %></td>
+            <td><%= log.details || "—" %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
