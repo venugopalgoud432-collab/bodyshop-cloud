@@ -1,7 +1,7 @@
 <section class="card">
   <div class="section-head">
     <h1><%= job ? `Edit Job ${job.roNumber}` : "New Job" %></h1>
-    <div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <a href="/dashboard" class="button secondary">Back</a>
       <% if (job) { %>
         <a href="/status/<%= job.customerPortalToken %>" class="button secondary">Customer Page</a>
@@ -155,6 +155,82 @@
   </form>
 
   <% if (job) { %>
+    <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;">
+
+    <div class="section-head">
+      <h2>Parts</h2>
+    </div>
+
+    <form action="/jobs/<%= job.id %>/parts" method="post" class="form-grid">
+      <div>
+        <label>Part Name</label>
+        <input name="name" required />
+      </div>
+
+      <div>
+        <label>Vendor</label>
+        <input name="vendor" />
+      </div>
+
+      <div>
+        <label>Quantity</label>
+        <input type="number" min="1" name="quantity" value="1" />
+      </div>
+
+      <div>
+        <label>ETA</label>
+        <input type="date" name="eta" />
+      </div>
+
+      <div>
+        <label>Status</label>
+        <select name="status">
+          <option value="ORDERED">Ordered</option>
+          <option value="RECEIVED">Received</option>
+          <option value="BACKORDERED">Backordered</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Notes</label>
+        <input name="notes" />
+      </div>
+
+      <div class="full">
+        <button class="button">Add Part</button>
+      </div>
+    </form>
+
+    <% if (parts && parts.length) { %>
+      <div class="table-wrap" style="margin-top:16px;">
+        <table>
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Vendor</th>
+              <th>Qty</th>
+              <th>Status</th>
+              <th>ETA</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% parts.forEach(part => { %>
+              <tr>
+                <td><%= part.name %></td>
+                <td><%= part.vendor || "—" %></td>
+                <td><%= part.quantity %></td>
+                <td><%= part.status %></td>
+                <td><%= part.eta ? new Date(part.eta).toLocaleDateString() : "—" %></td>
+                <td><%= part.notes || "—" %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+
     <hr style="margin:24px 0;border:none;border-top:1px solid #e2e8f0;">
 
     <h2>Post Internal or Customer Update</h2>
