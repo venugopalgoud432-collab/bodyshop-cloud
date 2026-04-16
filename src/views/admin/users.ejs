@@ -1,0 +1,97 @@
+<section class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Total Staff</div>
+    <div class="stat-value"><%= users.length %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Active Staff</div>
+    <div class="stat-value"><%= users.filter(u => u.isActive).length %></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <h1>Staff Management</h1>
+    <a href="/dashboard" class="button secondary">Back</a>
+  </div>
+
+  <form action="/admin/users" method="post" class="form-grid">
+    <div>
+      <label>Name</label>
+      <input name="name" required />
+    </div>
+
+    <div>
+      <label>Email</label>
+      <input type="email" name="email" required />
+    </div>
+
+    <div>
+      <label>Password</label>
+      <input type="password" name="password" required />
+    </div>
+
+    <div>
+      <label>Role</label>
+      <select name="role">
+        <option value="admin">Admin</option>
+        <option value="manager">Manager</option>
+        <option value="csr">CSR</option>
+        <option value="tech">Tech</option>
+      </select>
+    </div>
+
+    <div class="full">
+      <button class="button">Create Staff User</button>
+    </div>
+  </form>
+</section>
+
+<section class="card" style="margin-top:16px;">
+  <div class="section-head">
+    <h2>Existing Staff</h2>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Created</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (!users.length) { %>
+          <tr>
+            <td colspan="6" class="muted">No staff users found.</td>
+          </tr>
+        <% } %>
+
+        <% users.forEach(user => { %>
+          <tr>
+            <td><strong><%= user.name %></strong></td>
+            <td><%= user.email %></td>
+            <td><%= user.role %></td>
+            <td>
+              <span class="status-pill <%= user.isActive ? 'status-active' : 'status-inactive' %>">
+                <%= user.isActive ? "Active" : "Inactive" %>
+              </span>
+            </td>
+            <td><%= new Date(user.createdAt).toLocaleDateString() %></td>
+            <td>
+              <form action="/admin/users/<%= user.id %>/toggle" method="post">
+                <button class="button secondary small">
+                  <%= user.isActive ? "Deactivate" : "Activate" %>
+                </button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
