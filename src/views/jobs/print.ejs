@@ -35,10 +35,14 @@
       <span class="muted">Stage: <%= job.stage || "—" %></span>
     </div>
     <div class="box">
-      <strong>Hours</strong><br>
+      <strong>Hours / Profit</strong><br>
       Worked: <%= Number(job.hoursWorked || 0).toFixed(1) %><br>
       Est: <%= Number(job.estimatedHours || 0).toFixed(1) %><br>
-      Left: <%= hoursLeft(job).toFixed(1) %>
+      Left: <%= hoursLeft(job).toFixed(1) %><br>
+      Labour Rate: $<%= Number(job.labourRate || 0).toFixed(2) %><br>
+      Est. Sale: $<%= Number(job.estimatedSale || 0).toFixed(2) %><br>
+      Parts Cost: $<%= Number(job.partsCost || 0).toFixed(2) %><br>
+      Other Cost: $<%= Number(job.otherCost || 0).toFixed(2) %>
     </div>
   </div>
 
