@@ -25,6 +25,33 @@
   </div>
 </section>
 
+<section class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">Estimated Sales</div>
+    <div class="stat-value">$<%= stats.estimatedSales.toFixed(0) %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Avg Cycle Days</div>
+    <div class="stat-value"><%= stats.avgCycleDays.toFixed(1) %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Overdue Jobs</div>
+    <div class="stat-value"><%= stats.overdueJobs %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Delivered This Month</div>
+    <div class="stat-value"><%= stats.deliveredThisMonth %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Active Techs</div>
+    <div class="stat-value"><%= stats.activeTechs %></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Labour Potential</div>
+    <div class="stat-value">$<%= stats.labourPotential.toFixed(0) %></div>
+  </div>
+</section>
+
 <section class="card">
   <div class="section-head">
     <h1>Dashboard</h1>
@@ -65,9 +92,11 @@
         <tr>
           <th>RO</th>
           <th>Customer</th>
+          <th>Vehicle</th>
           <th>Status</th>
-          <th>Technician</th>
           <th>Hours</th>
+          <th>Sale</th>
+          <th>Profit</th>
           <th>Promised</th>
           <th>Actions</th>
         </tr>
@@ -75,32 +104,39 @@
       <tbody>
         <% if (!jobs.length) { %>
           <tr>
-            <td colspan="7" class="muted">No jobs found.</td>
+            <td colspan="9" class="muted">No jobs found.</td>
           </tr>
         <% } %>
 
-        <% jobs.forEach(job => { %>
+        <% jobs.forEach(job => { 
+          const labourSale = Number(job.estimatedHours || 0) * Number(job.labourRate || 0);
+          const sale = Number(job.estimatedSale || 0) || labourSale + Number(job.partsCost || 0);
+          const grossProfit = sale - Number(job.partsCost || 0) - Number(job.otherCost || 0);
+        %>
           <tr class="<%= isOverdue(job) ? 'row-overdue' : (isDueSoon(job) ? 'row-due-soon' : '') %>">
             <td>
               <strong><%= job.roNumber %></strong><br>
               <span class="muted"><%= job.customerName %></span>
             </td>
-            <td>
-              <%= [job.year, job.make, job.model].filter(Boolean).join(" ") || "—" %>
-            </td>
+            <td><%= [job.year, job.make, job.model].filter(Boolean).join(" ") || "—" %></td>
             <td>
               <span class="status-pill status-<%= job.status %>"><%= statusLabel(job.status) %></span><br>
               <span class="muted"><%= job.stage || "—" %></span>
             </td>
-            <td><%= job.technician || "Unassigned" %></td>
             <td>
               <%= Number(job.hoursWorked || 0).toFixed(1) %> /
               <%= Number(job.estimatedHours || 0).toFixed(1) %>
             </td>
+            <td>$<%= sale.toFixed(0) %></td>
+            <td>$<%= grossProfit.toFixed(0) %></td>
             <td>
               <% if (job.promisedDate) { %>
                 <%= new Date(job.promisedDate).toLocaleDateString() %>
-              <% } else { %>—<% } %>
+                <% if (isOverdue(job)) { %><br><span class="warn-text">Overdue</span><% } %>
+                <% if (!isOverdue(job) && isDueSoon(job)) { %><br><span class="soon-text">Due soon</span><% } %>
+              <% } else { %>
+                —
+              <% } %>
             </td>
             <td>
               <div class="mobile-stack">
